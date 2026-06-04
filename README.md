@@ -112,9 +112,31 @@ file is plain text and opens cleanly in Excel.
 
 ### Step 6 — Pictures (optional, run any time)
 
-Run `praat/03_export_spectrograms.praat` to save spectrogram images for each sound.
-This is slow, so it is kept separate and can be run whenever you like. *(This script
-is still being built.)*
+Run `praat/03_export_spectrograms.praat` to save a figure for each measured sound.
+In the settings box, set **Words directory** to your speaker's folder (for example
+`data/words/S1`) and **Speaker id** to match; the rest can stay at their defaults.
+Each figure shows one target sound with its marks drawn in (closure/burst/voicing/
+vowel-end, the ejective pop, and the vowel-middle stretch), saved to
+`figures/spectrograms/<speaker>/`.
+
+The figure is built from a stack of **panels** you choose. The **Panels** box takes
+a space-separated list, drawn top to bottom — any of `oscillogram`, `spectrogram`,
+`pitch`, `intensity` (default: `oscillogram spectrogram`). **Layout** picks whether
+they go in one combined image (*stacked*, sharing a time axis) or one image per panel
+(*separate*). You can also tick **Overlay formants on spectrogram**. The panel
+heights/width are adjustable if a figure feels cramped or stretched, and
+**Minimum window** keeps the time span from zooming in so far the spectrogram breaks
+into discrete "stars".
+
+By default **Preview first** is on: it draws a single example (shown in the Picture
+window and saved), then asks whether to render the rest — so you can check the layout
+before committing to the whole directory.
+
+This is slow, so it is kept separate and can be run whenever you like. By default it
+only draws sounds you have *accepted* and skips images that already exist, so it is
+safe to re-run after annotating a few more words. Tick **Overwrite existing images**
+to redraw everything, or untick **Accepted only** to also picture skipped/garbage
+sounds (useful for double-checking them).
 
 ### Step 7 — Analyse (Python)
 

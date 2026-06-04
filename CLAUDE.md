@@ -40,13 +40,22 @@ measures: silent_gap, burst_intensity_rel, f0_onset, H1-H2, HNR, jitter, shimmer
 ## pipeline architecture
 
 ```
-raw WAV (read-only)
-  -> manual pre-segmentation: word + rep + segment intervals in Praat
-  -> landmark annotation: helper script guides per-segment point placement
-  -> measurement extraction: frozen Praat script -> CSV
+session WAV (read-only, one per speaker)
+  -> MANUAL pre-step (the only one): mark WORD intervals on a session word tier
+  -> 00_slice_words.praat: slice each word into data/words/{speaker}/{NN}_{word}.wav
+                           + blank 7-tier per-word TextGrid (word tier pre-filled)
+  -> 01_annotate_helper.praat: walk per-word files; per file, 3 phases:
+       reps (drag-select -> auto r1,r2..) -> segments (auto s1,s2..) -> landmarks
+  -> 02_extract_measurements.praat: frozen battery -> measurements_{speaker}.csv
   -> Python pipeline: merge metadata -> validate -> derive -> analyze -> figures
-  -> spectrogram export: separate compute-heavy Praat script for images
+  -> 03_export_spectrograms.praat: separate compute-heavy Praat script for images
 ```
+
+The session is sliced into per-word WAVs so annotation never zooms around a
+multi-minute session. Each per-word file IS one word; the word identity lives on
+its (pre-filled) tier 1. Reps and segments are auto-numbered by the helper in
+time order (r1/r2.., s1/s2..); their linguistic identity is resolved via the
+metadata CSV join, not the positional TextGrid labels.
 
 ### stack
 - **Praat**: annotation helper, measurement extraction, spectrogram export
@@ -54,48 +63,51 @@ raw WAV (read-only)
 - **no R / lme4** (inappropriate for n=2)
 - **no forced alignment** (no Lakota model; all boundaries human-placed/verified)
 
-## TextGrid tier structure (7 tiers)
+## TextGrid tier structure (6 tiers, per-word file)
 
 | Tier | Type     | Name       | Content                                                |
 |------|----------|------------|--------------------------------------------------------|
-| 1    | interval | word       | orthographic word (e.g., "thezi")                      |
-| 2    | interval | rep        | repetition (e.g., "thezi.r1")                          |
-| 3    | interval | segment    | target segment (e.g., "thezi.r1.s1"); multiple per rep |
-| 4    | interval | fric       | affricate frication interval (manual)                  |
-| 5    | interval | vmid       | vowel steady-state interval (manual)                   |
-| 6    | point    | landmarks  | t_clo, t_burst, t_burst_end, t_voi, t_vend, t_glot_rel, t_pvend |
-| 7    | point    | metadata   | ok:{sound_type}, skip, garbage                         |
+| 1    | interval | word       | orthographic word; single whole-file interval, pre-filled by slicer |
+| 2    | interval | rep        | repetition (auto-labeled r1, r2, ...)                  |
+| 3    | interval | segment    | target segment (auto-labeled s1, s2, ...); multiple per rep |
+| 4    | interval | vmid       | vowel steady-state interval (manual)                   |
+| 5    | point    | landmarks  | t_clo, t_burst, t_voi, t_vend, t_glot_rel, t_pvend     |
+| 6    | point    | metadata   | ok:{sound_type}, skip, garbage                         |
 
-containment: reps within words, segments within reps, landmarks within segments (by time overlap with epsilon tolerance). adapted from vowel_analysis.praat nesting logic.
+Each per-word file has tier 1 = one interval (the word). Reps/segments marked by
+the helper. containment: segments within reps, landmarks within segments (time
+overlap, epsilon tolerance, closed-right since t_vend often sits on seg_end).
+The session word-tier TextGrid (pre-slice) lives in data/session_textgrids/.
+(No fric tier and no t_burst_end: affricate deep-dive is out of scope; the
+burst->voicing window captures aspiration and affricate frication alike.)
 
-## point landmarks (tier 6, full names)
+## point landmarks (tier 5, full names)
 
 - `t_clo` — closure onset (optional; VCV only)
-- `t_burst` — release/burst onset
-- `t_burst_end` — burst offset (stops only, NOT affricates)
+- `t_burst` — release/burst onset (for affricates, frication onset)
 - `t_voi` — voicing onset (first modal glottal pulse)
 - `t_vend` — following-vowel offset
 - `t_glot_rel` — glottal-release transient (ejectives only)
 - `t_pvend` — preceding-vowel offset (conditional)
 
-## sound types (determines landmark subset)
+## sound types (uniform landmark set; ejectives add t_glot_rel)
 
-| type                 | landmarks                                                |
-|----------------------|----------------------------------------------------------|
-| stop_plain           | t_clo(opt), t_burst, t_burst_end, t_voi, t_vend         |
-| stop_aspirated       | t_clo(opt), t_burst, t_burst_end, t_voi, t_vend         |
-| stop_ejective        | t_clo(opt), t_burst, t_burst_end, t_glot_rel, t_voi, t_vend |
-| affricate_plain      | t_clo(opt), t_burst, t_voi, t_vend                      |
-| affricate_aspirated  | t_clo(opt), t_burst, t_voi, t_vend                      |
-| affricate_ejective   | t_clo(opt), t_burst, t_glot_rel, t_voi, t_vend          |
+| type                 | landmarks                                       |
+|----------------------|-------------------------------------------------|
+| stop_plain           | t_clo(opt), t_burst, t_voi, t_vend             |
+| stop_aspirated       | t_clo(opt), t_burst, t_voi, t_vend             |
+| stop_ejective        | t_clo(opt), t_burst, t_glot_rel, t_voi, t_vend |
+| affricate_plain      | t_clo(opt), t_burst, t_voi, t_vend             |
+| affricate_aspirated  | t_clo(opt), t_burst, t_voi, t_vend             |
+| affricate_ejective   | t_clo(opt), t_burst, t_glot_rel, t_voi, t_vend |
 
-## measurement battery (~55 columns)
+## measurement battery (45 columns)
 
-**temporal**: VOT (signed), closure_dur, burst_dur, aspiration_dur, gap_dur, glottal_oral_interval (signed), vowel_dur, fric_dur
+**temporal**: VOT (signed), closure_dur, glottal_oral_interval (signed), vowel_dur. (noise/aspiration duration == VOT, not emitted separately.)
 **voiced-closure** (when t_clo present): voiced_closure_prop, voiced_closure_onset_ms
-**intensity**: burst peak, vowel-onset mean, burst-to-vowel ratio, aspiration mean, fric mean, gap RMS, gap_is_silent
-**spectral moments** (FFT, power=2): burst 4 moments, aspiration 4, frication 4
-**formants**: F1/F2/F3 at onset (W_von=30ms), F1/F2/F3 at midpoint (W_vmid center)
+**intensity**: burst peak (t_burst→+20ms), vowel-onset mean, burst-to-vowel ratio, noise mean, noise_is_silent
+**spectral moments** (FFT, power=2): noise 4 moments over t_burst→t_voi (= aspiration COG for aspirated, frication COG for affricates, flat for ejective gaps)
+**formants**: F1/F2/F3 at onset (W_von=30ms), F1/F2/F3 at midpoint (vmid center)
 **f0**: onset value, contour (semicolon-separated, 10ms steps)
 **H1-H2** (uncorrected): from Spectrum of W_von
 **HNR**: from Harmonicity of W_von
@@ -103,9 +115,17 @@ containment: reps within words, segments within reps, landmarks within segments 
 
 ## token data model
 
-`token_id` = `{speaker}_{word}_{target_short}_{rep}`
+`token_id` = `{speaker}_{filestem}_{rep}_{segment}` (e.g., `S1_01_cake_r1_s1`).
+Built by 02 from the per-word file stem (NN_word, already ASCII-safe + unique via
+the NN index — no transliteration needed), tier-2 rep label, tier-3 segment label.
+This is the JOIN KEY into the metadata CSV, which carries linguistic identity.
+The extraction CSV is kept ASCII-only (no orthography column) so Excel reads it
+cleanly; full orthography (č ȟ ŋ ʼ etc.) lives in words_manifest.csv + the metadata
+CSV. Praat writes UTF-16 for any non-ASCII content, which Excel mangles — so
+human-edited/opened files use a UTF-8 BOM (token_metadata.csv) and Python outputs
+use utf-8-sig; the manifest stays UTF-16 (open via Excel's import, not double-click).
 
-columns: token_id, speaker, word, gloss, rep, target, category, place, position, following_vowel, stress, documented_asp (/C_e/ only), probe (semicolon-separated), provenance, preceding_seg, notes
+metadata CSV columns: token_id, speaker, word, gloss, rep, target, category, place, position, following_vowel, stress, documented_asp (/C_e/ only), probe (semicolon-separated), provenance, preceding_seg, notes
 
 ## per-speaker settings
 
@@ -143,12 +163,14 @@ descriptive case study of two speakers. Oglala/Pine Ridge only, citation registe
 ## directory layout
 
 ```
-config/          per-speaker settings + token metadata
-data/raw/        read-only WAVs (one per speaker)
-data/annotations/ TextGrids
-data/derived/    extraction CSVs, merged tables, validation reports
-praat/           00_create_textgrids, 01_annotate_helper, 02_extract_measurements, 03_export_spectrograms
-python/          pipeline modules (run_pipeline, config_loader, load/merge/validate/derive/analyze)
-figures/         q1-q4 analysis figures + spectrograms
-output/          q1-q4 summary tables
+config/                per-speaker settings + token metadata
+data/raw/              read-only session WAVs (one per speaker), e.g. S1.wav
+data/session_textgrids/ session TextGrids with hand-marked word tier (S1.TextGrid)
+data/words/{speaker}/  sliced per-word WAV+TextGrid + words_manifest.csv (00 output;
+                       holds the precious per-word annotations — do not blow away)
+data/derived/          extraction CSVs, merged tables, validation reports
+praat/                 00_slice_words, 01_annotate_helper, 02_extract_measurements, 03_export_spectrograms
+python/                pipeline modules (run_pipeline, config_loader, load/merge/validate/derive/analyze)
+figures/               q1-q4 analysis figures + spectrograms
+output/                q1-q4 summary tables
 ```

@@ -32,7 +32,8 @@ wheels/
 *.Intensity
 *.png
 *.praat~
-*.TextGrid~
+*.wav
+*.TextGrid
 
 # IDE
 .vscode/

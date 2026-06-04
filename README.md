@@ -21,11 +21,12 @@ The workflow has two halves:
 1. **Praat** (the free phonetics program). Download it from <https://www.praat.org>
    and unzip it anywhere. You run it by double-clicking `Praat.exe`.
 2. The recording for your speaker, as a single `.wav` file.
-3. (Analysis half only) **Python 3.12** with the packages listed in
-   `requirements.txt`. Install them once with:
-   ```
-   pip install -r requirements.txt
-   ```
+3. (Analysis half only) **Python** and a few packages. You do **not** need to install
+   or know anything about Python first — just **double-click `setup.cmd`** in this folder.
+   It installs Python if it is missing, builds an isolated environment, and installs the
+   packages, all by itself and without administrator rights. Run it once; re-run it any
+   time it complains. (Under the hood it uses Python 3.12 and the versions pinned in
+   `requirements.txt`.)
 
 ### How to run any Praat script in this repo
 
@@ -155,8 +156,8 @@ names; the popups explain each one as you go. This table is here for reference.
 
 | Mark | Plain meaning |
 | --- | --- |
-| **closure start** (`t_clo`) | Where the consonant goes silent — the previous vowel stops and the line goes flat. Only if a vowel comes right before; skip at the start of a word. |
-| **release / burst** (`t_burst`) | The sharp pop where the consonant opens up. For *ch*-type sounds, where the hissy noise starts. |
+| **closure start** (`t_clo`) | Where the consonant goes silent — the previous vowel stops and the line goes flat. Only if a vowel comes right before; skip at the start of a word. (Fricatives have no closure — the helper won't ask for this.) |
+| **release / burst** (`t_burst`) | The sharp pop where the consonant opens up. For *ch*-type sounds and fricatives (s, š, ȟ), where the hissy noise starts instead. |
 | **ejective pop** (`t_glot_rel`) | Ejectives only: the small second pop just after the main release. |
 | **voicing start** (`t_voi`) | Where the following vowel's buzzing begins — the first steady, repeating wave. |
 | **vowel end** (`t_vend`) | Where the following vowel stops. |
@@ -164,8 +165,10 @@ names; the popups explain each one as you go. This table is here for reference.
 | **earlier vowel end** (`t_pvend`) | Usually skipped; only if a vowel from the previous word runs into this one. |
 
 **Sound types** you choose from the menu: plain / aspirated / ejective **stop**
-(p, t, k), and plain / aspirated / ejective **affricate** (the *ch* sound). The menu
-spells out what each one means.
+(p, t, k), plain / aspirated / ejective **affricate** (the *ch* sound), and plain /
+ejective **fricative** (s, š, ȟ and their ejectives). For a fricative the helper asks
+where the hiss starts instead of a burst, and skips the closure mark. The menu spells
+out what each one means.
 
 ---
 

@@ -7,7 +7,9 @@ descriptive acoustic phonetics study of the Lakota (Oglala, Pine Ridge) obstruen
 ### targets
 - coronal stop series: /t tʰ tȟ tʼ/ (plain, glottal-aspirated, velar/uvular-aspirated, ejective)
 - affricate series: /tʃ tʃʰ tʃʼ/
-- secondary place check: /p k/
+- secondary place check: /p k/ (+ full labial/velar series pʰ pʼ pȟ kʰ kʼ kȟ now elicited)
+- fricatives /s š ȟ sʼ šʼ ȟʼ/ — SECONDARY tier: document properties (frication moments,
+  formant transitions), not a primary research target; they pattern per documentation
 
 ~35-50 distinct words, ~5 reps each, 2 speakers.
 
@@ -20,6 +22,13 @@ descriptive acoustic phonetics study of the Lakota (Oglala, Pine Ridge) obstruen
 one WAV per speaker — full session recording of controlled carrier-phrase elicitation. mono WAV, >=44.1 kHz / 16-bit, sound booth.
 
 ## research questions
+
+This is a documentation study: the four questions are LENSES over measures taken across the
+whole inventory, NOT bins tokens get assigned to. Dispatch is property-based, not probe-routed —
+every measure runs for every token its landmarks+properties support (else NA-with-reason), and
+each Q is a non-exclusive VIEW selecting/grouping by linguistic property (manner/laryngeal/place/
+position). A token feeds every view it qualifies for; `full_inventory` holds them all. See the
+token-data-model + the analysis-dispatch notes.
 
 **Q1 — plain stop realization + aspiration contrast**
 how are plain voiceless stops realized in word-initial and stressed positions? unaspirated vs aspirated stops are documented as contrastive in dictionary entries — does the acoustic data support this? preliminary [k] vs [kʰ] data needs further evaluation (velar place secondary to coronal but now explicitly in scope).
@@ -79,7 +88,7 @@ the helper. containment: segments within reps, landmarks within segments (time
 overlap, epsilon tolerance, closed-right since t_vend often sits on seg_end).
 The session word-tier TextGrid (pre-slice) lives in data/session_textgrids/.
 (No fric tier and no t_burst_end: affricate deep-dive is out of scope; the
-burst->voicing window captures aspiration and affricate frication alike.)
+burst->voicing window captures aspiration, affricate AND fricative frication alike.)
 
 ## point landmarks (tier 5, full names)
 
@@ -100,13 +109,19 @@ burst->voicing window captures aspiration and affricate frication alike.)
 | affricate_plain      | t_clo(opt), t_burst, t_voi, t_vend             |
 | affricate_aspirated  | t_clo(opt), t_burst, t_voi, t_vend             |
 | affricate_ejective   | t_clo(opt), t_burst, t_glot_rel, t_voi, t_vend |
+| fricative_plain      | t_burst(=frication onset), t_voi, t_vend        |
+| fricative_ejective   | t_burst(=frication onset), t_glot_rel, t_voi, t_vend |
+
+Fricatives have NO t_clo (no silent closure); t_burst marks frication onset. They are a
+SECONDARY "document the properties" tier (frication COG/moments + formant transitions),
+not a primary research target. Same landmark-driven battery, no fricative-specific code.
 
 ## measurement battery (45 columns)
 
 **temporal**: VOT (signed), closure_dur, glottal_oral_interval (signed), vowel_dur. (noise/aspiration duration == VOT, not emitted separately.)
 **voiced-closure** (when t_clo present): voiced_closure_prop, voiced_closure_onset_ms
 **intensity**: burst peak (t_burst→+20ms), vowel-onset mean, burst-to-vowel ratio, noise mean, noise_is_silent
-**spectral moments** (FFT, power=2): noise 4 moments over t_burst→t_voi (= aspiration COG for aspirated, frication COG for affricates, flat for ejective gaps)
+**spectral moments** (FFT, power=2): noise 4 moments over t_burst→t_voi (= aspiration COG for aspirated, frication COG for affricates AND fricatives, flat for ejective gaps)
 **formants**: F1/F2/F3 at onset (W_von=30ms), F1/F2/F3 at midpoint (vmid center)
 **f0**: onset value, contour (semicolon-separated, 10ms steps)
 **H1-H2** (uncorrected): from Spectrum of W_von
@@ -115,17 +130,37 @@ burst->voicing window captures aspiration and affricate frication alike.)
 
 ## token data model
 
-`token_id` = `{speaker}_{filestem}_{rep}_{segment}` (e.g., `S1_01_cake_r1_s1`).
-Built by 02 from the per-word file stem (NN_word, already ASCII-safe + unique via
-the NN index — no transliteration needed), tier-2 rep label, tier-3 segment label.
-This is the JOIN KEY into the metadata CSV, which carries linguistic identity.
-The extraction CSV is kept ASCII-only (no orthography column) so Excel reads it
-cleanly; full orthography (č ȟ ŋ ʼ etc.) lives in words_manifest.csv + the metadata
-CSV. Praat writes UTF-16 for any non-ASCII content, which Excel mangles — so
-human-edited/opened files use a UTF-8 BOM (token_metadata.csv) and Python outputs
-use utf-8-sig; the manifest stays UTF-16 (open via Excel's import, not double-click).
+`token_id` = `{speaker}_{filestem}_{rep}_{segment}` (e.g., `S1_07_pablu_r1_s1`).
+Built by 02 from the per-word file stem, tier-2 rep label, tier-3 segment label. The
+filestem is `{NN}_{safeword}`, where 00's `sanitize` maps every non-ASCII char to `_`
+(č ȟ á ʼ → _), so the stem's word portion is LOSSY — you CANNOT recover orthography from
+token_id. Uniqueness comes from the NN index, not the word.
 
-metadata CSV columns: token_id, speaker, word, gloss, rep, target, category, place, position, following_vowel, stress, documented_asp (/C_e/ only), probe (semicolon-separated), provenance, preceding_seg, notes
+**JOIN (two stages, word-grain — NOT by token_id):**
+  1. `measurements.file` == `words_manifest.filename` (both are the `{NN}_{safeword}` stem)
+     → recovers `words_manifest.word_label` (the raw, full-orthography TextGrid label).
+  2. `normalize_orthography(word_label)` == `words_metadata.word`
+     → attaches linguistic identity (target/category/place/position/probe/…).
+Linguistic identity is authored at WORD grain in `config/words_metadata.csv` (one row per
+sound×word×position; 84 rows, verified word-unique); speaker/rep/segment ride in from the
+measurement side and merge_metadata fans word-grain rows out to tokens. There is NO
+hand-authored token_id-keyed file (the old `config/token_metadata.csv` is superseded).
+**Contract:** both `word_label` and `words_metadata.word` must pass through
+`normalize_orthography()` before comparison (manifest is NFD + UTF-16 from Praat); and the
+session-TextGrid word labels must be the SAME lexical strings as the sheet words (a typo, not
+an encoding diff, is the one thing normalization can't save — surfaces as a merge orphan).
+Assumes ONE target segment per word file; a stray s2 gets the same word-grain metadata and
+must be caught in validate.
+
+ENCODING: extraction CSV is ASCII-only (no orthography column) so Excel reads it cleanly. Full
+orthography lives in `words_manifest.csv` (UTF-16, Praat-written — Python reads as UTF-16) and
+`words_metadata.csv` (utf-8-sig). Python outputs use utf-8-sig.
+
+`words_metadata.csv` columns — auto-filled by `normalize_wordlist.py`: sound, sound_ipa,
+target, word, gloss, position, manner, place, laryngeal, category. Human-fill: following_vowel
++ stress (grouping refinements only — a view degrades to ungrouped if absent, never drops
+tokens; derivable from word+position), documented_asp (/C_e/ only), provenance, preceding_seg,
+notes. `probe` is OPTIONAL free-text (intended-focus annotation) — NOT a computation gate.
 
 ## per-speaker settings
 

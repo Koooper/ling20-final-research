@@ -36,7 +36,10 @@ paths:
   validation: "data/derived/validation"
   figures: "figures"
   output: "output"
-  metadata: "config/token_metadata.csv"
+  words_metadata: "config/words_metadata.csv"   # word-grain identity (normalize_wordlist.py output)
+  # per-speaker slice manifest: {words}/{speaker}/words_manifest.csv (UTF-16, Praat-written)
+  # merge join chain: measurements.file -> manifest.filename -> manifest.word_label
+  #                   -> normalize_orthography() -> words_metadata.word
 
 analysis:
   von_window_ms: 30               # vowel-onset window

@@ -31,8 +31,7 @@
 # OUTPUT  figures/spectrograms/{speaker}/...   (300-dpi PNG)
 
 form: "Export figures (Lakota obstruents)"
-    folder: "Words directory", "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch/data/words/S1"
-    folder: "Figures base dir", "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch/figures/spectrograms"
+    comment: "Folders are found automatically from where this script lives; just set the speaker."
     word: "Speaker id", "S1"
     natural: "Word tier", "1"
     natural: "Rep tier", "2"
@@ -101,8 +100,21 @@ if overlay_formants_on_spectrogram = 1 and need_spec = 1
     need_formant = 1
 endif
 
+# --- Locate the repo from this script's folder (praat/ -> repo root) ---
+# defaultDirectory$ is the folder of the running script; the data/ tree sits one
+# level up, so the word + figures folders are derived and the repo can live anywhere.
+repo$ = defaultDirectory$ + "/.."
+if not folderExists (repo$ + "/data")
+    exitScript: "Can't find the repo's data/ folder from this script's location.", newline$,
+        ... "Script folder: ", defaultDirectory$, newline$,
+        ... "Open this script from the repo's praat/ folder (Praat -> Open Praat script...) and Run."
+endif
+words_directory$ = repo$ + "/data/words/" + speaker_id$
+figures_base_dir$ = repo$ + "/figures/spectrograms"
+
 if not folderExists (words_directory$)
-    exitScript: "Words directory does not exist: ", words_directory$
+    exitScript: "Words directory does not exist: ", words_directory$, newline$,
+        ... "Run 00_slice_words.praat for speaker ", speaker_id$, " first."
 endif
 out_dir$ = figures_base_dir$ + "/" + speaker_id$
 createFolder: out_dir$

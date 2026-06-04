@@ -1,4 +1,6 @@
-project_root: "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch"
+# project_root is derived at load time from this file's location (config/ sits one
+# level under the repo root), so nothing machine-specific is stored here and the repo
+# stays portable. Every path under `paths:` below is relative to that derived root.
 
 speakers:
   S1:
@@ -22,14 +24,13 @@ tiers:
   word: 1
   rep: 2
   segment: 3
-  fric: 4
-  vmid: 5
-  landmarks: 6
-  metadata: 7
+  vmid: 4
+  landmarks: 5
+  metadata: 6
 
 paths:
   raw_audio: "data/raw"
-  annotations: "data/annotations"
+  words: "data/words"
   extraction: "data/derived/extraction"
   merged: "data/derived/merged"
   validation: "data/derived/validation"

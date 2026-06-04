@@ -34,10 +34,11 @@
 # (standard Praat annotation-helper pattern). Editor stays open for the whole file.
 
 form: "Annotate per-word files (Lakota obstruents)"
-    comment: "Point this at your speaker's word folder (e.g. data/words/S1). It walks each"
-    comment: "word file and guides you through marking it. Drag the first popup window aside"
-    comment: "so it doesn't cover the sound editor. Use the Exit button - don't close the editor."
-    folder: "Words directory", "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch/data/words/S1"
+    comment: "Walks your speaker's word files and guides you through marking each one. The"
+    comment: "folder is found automatically from where this script lives; just set the speaker."
+    comment: "Drag the first popup window aside so it doesn't cover the sound editor."
+    comment: "Use the Exit button - don't close the editor."
+    word: "Speaker id", "S1"
     boolean: "Resume (skip parts already marked)", 1
     comment: "View padding = extra milliseconds shown around the part you're working on."
     positive: "View padding (ms)", "120"
@@ -52,8 +53,20 @@ endform
 pad = view_padding / 1000
 eps = 0.0005
 
+# --- Locate the repo from this script's folder (praat/ -> repo root) ---
+# defaultDirectory$ is the folder of the running script; the data/ tree sits one
+# level up, so the word folder is derived and the repo can live anywhere.
+repo$ = defaultDirectory$ + "/.."
+if not folderExists (repo$ + "/data")
+    exitScript: "Can't find the repo's data/ folder from this script's location.", newline$,
+        ... "Script folder: ", defaultDirectory$, newline$,
+        ... "Open this script from the repo's praat/ folder (Praat -> Open Praat script...) and Run."
+endif
+words_directory$ = repo$ + "/data/words/" + speaker_id$
+
 if not folderExists (words_directory$)
-    exitScript: "Words directory does not exist: ", words_directory$
+    exitScript: "Words directory does not exist: ", words_directory$, newline$,
+        ... "Run 00_slice_words.praat for speaker ", speaker_id$, " first."
 endif
 
 files$# = fileNames$# (words_directory$ + "/*.wav")

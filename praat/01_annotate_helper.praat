@@ -18,8 +18,10 @@
 #   stop_plain/aspirated     t_clo? t_burst t_voi t_vend
 #   stop_ejective            + t_glot_rel
 #   affricate_plain/asp/ej   t_clo? t_burst t_voi t_vend  (+ t_glot_rel if ejective)
-# All types mark a vmid interval (tier 4). No burst-offset, no fric interval:
-# the burst->voicing window captures aspiration and affricate frication alike.
+#   fricative_plain/ejective t_burst(=frication onset) t_voi t_vend (+ t_glot_rel if
+#                            ejective). NO t_clo: fricatives have no silent closure.
+# All types mark a vmid interval (tier 4). No burst-offset, no fric interval: the
+# burst->voicing window captures aspiration, affricate AND fricative frication alike.
 # METADATA (tier 6): ok:{sound_type} | skip | garbage
 #
 # NOTE: do not manually close the editor mid-session (Praat gives no way to
@@ -286,6 +288,8 @@ procedure process_segment: .seg_label$, .seg_start, .seg_end
                 option: "plain affricate"
                 option: "aspirated affricate"
                 option: "ejective affricate"
+                option: "plain fricative"
+                option: "ejective fricative"
             comment: "Continue = start placing marks. Skip = can't measure this one."
             comment: "Garbage = bad recording. Exit = stop for now (your work so far is saved)."
         .clicked = endPause: "Exit", "Skip", "Garbage", "Continue", 4, 1
@@ -328,31 +332,41 @@ endproc
 procedure place_landmarks: .label$, .seg_start, .seg_end
     .ctx$ = "sound " + .label$
 
-    beginPause: "Closure start  (t_clo)  —  " + .ctx$
-        comment: "Where the consonant's silent CLOSURE begins: the moment the previous"
-        comment: "sound ends and the oscillogram goes flat and quiet."
-        comment: "Only place if intervocalic."
-        comment: "If word initial, just click Skip."
-        comment: "Click in the oscillogram to set the cursor, then click 'Mark t_clo'."
-    .c = endPause: "Skip", "Mark t_clo", 2, 1
-    if .c = 2
-        @mark_point_from_cursor: "t_clo"
+    if map_sound_type.is_fricative = 0
+        beginPause: "Closure start  (t_clo)  —  " + .ctx$
+            comment: "Where the consonant's silent CLOSURE begins: the moment the previous"
+            comment: "sound ends and the oscillogram goes flat and quiet."
+            comment: "Only place if intervocalic."
+            comment: "If word initial, just click Skip."
+            comment: "Click in the oscillogram to set the cursor, then click 'Mark t_clo'."
+        .c = endPause: "Skip", "Mark t_clo", 2, 1
+        if .c = 2
+            @mark_point_from_cursor: "t_clo"
+        endif
     endif
 
-    beginPause: "Release / burst  (t_burst)  —  " + .ctx$
-        comment: "The RELEASE: the consonant's stop burst"
-        comment: "For affricates, use the moment the noise begins."
-        comment: "Set the cursor at that spike, then click 'Mark t_burst'."
-    .c = endPause: "Skip", "Mark t_burst", 2, 1
+    if map_sound_type.is_fricative = 1
+        beginPause: "Frication onset  (t_burst)  —  " + .ctx$
+            comment: "Where the fricative's hissy NOISE begins — the onset of turbulent"
+            comment: "frication. No burst or pop; just where the hiss starts."
+            comment: "Set the cursor there, then click 'Mark t_burst'."
+        .c = endPause: "Skip", "Mark t_burst", 2, 1
+    else
+        beginPause: "Release / burst  (t_burst)  —  " + .ctx$
+            comment: "The RELEASE: the consonant's stop burst"
+            comment: "For affricates, use the moment the noise begins."
+            comment: "Set the cursor at that spike, then click 'Mark t_burst'."
+        .c = endPause: "Skip", "Mark t_burst", 2, 1
+    endif
     if .c = 2
         @mark_point_from_cursor: "t_burst"
     endif
 
     if map_sound_type.prompt_glot_rel = 1
         beginPause: "Ejective pop  (t_glot_rel)  —  " + .ctx$
-            comment: "EJECTIVES ONLY. Just after the main release there could be a"
-            comment: "different burst a moment later. Might be a glottal release??"
-            comment: "Set the cursor on that second pop, then 'Mark t_glot_rel'."
+            comment: "EJECTIVES ONLY. Just after the main release (or after the frication,"
+            comment: "for ejective fricatives) there could be a separate pop a moment later."
+            comment: "Might be a glottal release?? Set the cursor on that pop, 'Mark t_glot_rel'."
             comment: "If you cannot see a separate second pop, click Skip."
         .c = endPause: "Skip", "Mark t_glot_rel", 2, 1
         if .c = 2
@@ -420,6 +434,7 @@ endproc
 # SOUND-TYPE MAP
 # ============================================================
 procedure map_sound_type: .idx
+    .is_fricative = 0
     if .idx = 1
         .name$ = "stop_plain"
         .prompt_glot_rel = 0
@@ -435,9 +450,17 @@ procedure map_sound_type: .idx
     elsif .idx = 5
         .name$ = "affricate_aspirated"
         .prompt_glot_rel = 0
-    else
+    elsif .idx = 6
         .name$ = "affricate_ejective"
         .prompt_glot_rel = 1
+    elsif .idx = 7
+        .name$ = "fricative_plain"
+        .prompt_glot_rel = 0
+        .is_fricative = 1
+    else
+        .name$ = "fricative_ejective"
+        .prompt_glot_rel = 1
+        .is_fricative = 1
     endif
 endproc
 

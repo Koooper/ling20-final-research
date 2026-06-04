@@ -43,7 +43,7 @@ measures: silent_gap, burst_intensity_rel, f0_onset, H1-H2, HNR, jitter, shimmer
 session WAV (read-only, one per speaker)
   -> MANUAL pre-step (the only one): mark WORD intervals on a session word tier
   -> 00_slice_words.praat: slice each word into data/words/{speaker}/{NN}_{word}.wav
-                           + blank 7-tier per-word TextGrid (word tier pre-filled)
+                           + blank 6-tier per-word TextGrid (word tier pre-filled)
   -> 01_annotate_helper.praat: walk per-word files; per file, 3 phases:
        reps (drag-select -> auto r1,r2..) -> segments (auto s1,s2..) -> landmarks
   -> 02_extract_measurements.praat: frozen battery -> measurements_{speaker}.csv

@@ -3,7 +3,7 @@
 # Stage A of the Lakota obstruents pipeline. Takes a full SESSION recording plus
 # a session TextGrid whose WORD tier has been hand-segmented (the ONLY manual
 # pre-script step), and slices each labeled word interval into its own small WAV
-# + a blank per-word 7-tier TextGrid (word tier pre-filled). Downstream the
+# + a blank per-word 6-tier TextGrid (word tier pre-filled). Downstream the
 # annotation helper (01) walks these small per-word files for the rep -> segment
 # -> landmark cascade, which is far easier than zooming around a 27 s session.
 #
@@ -13,7 +13,7 @@
 #
 # OUTPUT  (data/words/{speaker}/)
 #   {NN}_{safe_word}.wav        zero-based-time slice (+/- padding)
-#   {NN}_{safe_word}.TextGrid   7-tier, tier 1 (word) pre-filled with orthography
+#   {NN}_{safe_word}.TextGrid   6-tier, tier 1 (word) pre-filled with orthography
 #   words_manifest.csv          index,filename,word_label,src_start_s,src_end_s,slice_dur_s
 #
 # Per-word TextGrid tiers (identical to the rest of the pipeline):
@@ -26,10 +26,8 @@
 
 form: "Slice session into per-word files"
     comment: "Cut one long recording into one small file per word. Run this once per session."
-    infile: "Session wav", "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch/data/raw/S1.wav"
-    infile: "Session textgrid", "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch/data/session_textgrids/S1.TextGrid"
+    comment: "Folders are found automatically from where this script lives; just set the speaker."
     word: "Speaker id", "S1"
-    folder: "Words base dir", "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch/data/words"
     comment: "Word tier = the tier number in the session TextGrid that has the word labels."
     natural: "Word tier", "1"
     comment: "Slice padding = extra milliseconds kept on each side of a word (gives breathing room)."
@@ -39,6 +37,19 @@ endform
 pad = slice_padding / 1000
 all_tiers$ = "word rep segment vmid landmarks metadata"
 point_tiers$ = "landmarks metadata"
+
+# --- Locate the repo from this script's folder (praat/ -> repo root) ---
+# defaultDirectory$ is the folder of the running script; the data/ tree sits one
+# level up. All paths below are derived from this, so the repo can live anywhere.
+repo$ = defaultDirectory$ + "/.."
+if not folderExists (repo$ + "/data")
+    exitScript: "Can't find the repo's data/ folder from this script's location.", newline$,
+        ... "Script folder: ", defaultDirectory$, newline$,
+        ... "Open this script from the repo's praat/ folder (Praat -> Open Praat script...) and Run."
+endif
+session_wav$ = repo$ + "/data/raw/" + speaker_id$ + ".wav"
+session_textgrid$ = repo$ + "/data/session_textgrids/" + speaker_id$ + ".TextGrid"
+words_base_dir$ = repo$ + "/data/words"
 
 if not fileReadable (session_wav$)
     exitScript: "Session WAV not readable: ", session_wav$

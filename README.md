@@ -31,13 +31,16 @@ The workflow has two halves:
 
 1. Open Praat. Two windows appear; use the one titled **"Praat Objects"**.
 2. In its menu bar, click **Praat → Open Praat script…** and choose the script
-   (for example `praat/00_slice_words.praat`).
+   (for example `praat/00_slice_words.praat`). Always open the script this way, from
+   its place inside the repo — that is how it finds the data folders.
 3. A script window opens. In its menu bar, click **Run → Run** (or press Ctrl+R).
-4. A settings box appears. Each field that asks for a file or folder has a
-   **Browse** button. Fill in the fields and click **OK**.
+4. A settings box appears. The scripts work out where the repo's folders are on their
+   own, so the boxes only ask for the speaker name and a few settings — no file paths
+   to type or browse to. Fill them in and click **OK**.
 
 That is all there is to it. The steps below tell you which script to run and what
-to put in the boxes.
+to put in the boxes. (If a script stops with a message about not finding the `data/`
+folder, you opened it from outside the repo — re-open it via the menu above.)
 
 ### Step 1 — Put the recording in place
 
@@ -69,10 +72,9 @@ the scripts handle that next, on smaller, easier-to-read files.
 
 Run `praat/00_slice_words.praat`. In the settings box:
 
-- **Session wav** — browse to `data/raw/S1.wav`.
-- **Session textgrid** — browse to `data/session_textgrids/S1.TextGrid`.
-- **Speaker id** — `S1` (or your speaker's name).
-- **Words base dir** — leave as `data/words`.
+- **Speaker id** — `S1` (or your speaker's name). The script uses this to find
+  `data/raw/S1.wav` and `data/session_textgrids/S1.TextGrid`, and to choose where to
+  write the word files (`data/words/S1/`).
 - **Word tier** — `1`.
 - **Slice padding (ms)** — `50` is fine.
 
@@ -82,8 +84,8 @@ so it is safe to run again if you add more words later.
 
 ### Step 4 — Mark the sounds
 
-Run `praat/01_annotate_helper.praat`. In the settings box, set **Words directory**
-to your speaker's folder (for example `data/words/S1`) and click OK.
+Run `praat/01_annotate_helper.praat`. In the settings box, set **Speaker id** (for
+example `S1`) and click OK; it opens that speaker's word files automatically.
 
 The script opens each word file and walks you through it. **Drag the first popup
 window off to the side** so it does not cover the sound editor; Praat keeps later
@@ -106,15 +108,15 @@ the script skips what you already finished (leave **Resume** ticked).
 
 ### Step 5 — Pull out the measurements (analysis half)
 
-Run `praat/02_extract_measurements.praat`, pointed at the same word folder. It writes
+Run `praat/02_extract_measurements.praat` with the same **Speaker id**. It writes
 one row per measured sound to `data/derived/extraction/measurements_S1.csv`. This
 file is plain text and opens cleanly in Excel.
 
 ### Step 6 — Pictures (optional, run any time)
 
 Run `praat/03_export_spectrograms.praat` to save a figure for each measured sound.
-In the settings box, set **Words directory** to your speaker's folder (for example
-`data/words/S1`) and **Speaker id** to match; the rest can stay at their defaults.
+In the settings box, set **Speaker id** (for example `S1`); the rest can stay at their
+defaults.
 Each figure shows one target sound with its marks drawn in (closure/burst/voicing/
 vowel-end, the ejective pop, and the vowel-middle stretch), saved to
 `figures/spectrograms/<speaker>/`.

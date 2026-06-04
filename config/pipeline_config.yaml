@@ -1,0 +1,66 @@
+project_root: "C:/Users/djjr6/OneDrive/Documents/LakotaPhoneticsResearch"
+
+speakers:
+  S1:
+    formant_ceiling: 5000
+    formant_number: 5
+    pitch_floor: 75
+    pitch_ceiling: 300
+    intensity_min_pitch: 100
+    recording_floor_db: -60       # measure from silence segment, adjust
+    silent_offset_db: 5           # gap_is_silent when gap_rms < floor + offset
+  S2:
+    formant_ceiling: 5000
+    formant_number: 5
+    pitch_floor: 75
+    pitch_ceiling: 300
+    intensity_min_pitch: 100
+    recording_floor_db: -60
+    silent_offset_db: 5
+
+tiers:
+  word: 1
+  rep: 2
+  segment: 3
+  fric: 4
+  vmid: 5
+  landmarks: 6
+  metadata: 7
+
+paths:
+  raw_audio: "data/raw"
+  annotations: "data/annotations"
+  extraction: "data/derived/extraction"
+  merged: "data/derived/merged"
+  validation: "data/derived/validation"
+  figures: "figures"
+  output: "output"
+  metadata: "config/token_metadata.csv"
+
+analysis:
+  von_window_ms: 30               # vowel-onset window
+  von_max_proportion: 0.5         # cap at 50% of vowel duration
+  f0_contour_step_ms: 10
+  locus_equation_min_points: 5
+  spectrum_power: 2               # power for spectral moment queries
+
+validation:
+  vot_range_ms: [-150, 200]       # allow prevoicing (e.g., -115ms observed)
+  closure_dur_range_ms: [10, 500]
+  burst_dur_range_ms: [1, 80]
+  cog_range_hz: [500, 12000]
+  f1_range_hz: [200, 1000]
+  f2_range_hz: [500, 3000]
+  f3_range_hz: [1500, 4500]
+  min_tokens_per_category: 2
+  hand_check_fraction: 0.12       # ~12% of tokens
+  hand_check_seed: 42
+  vot_tolerance_ms: 5             # pipeline vs hand-measured threshold
+  cog_tolerance_hz: 200
+
+spectrogram:
+  wideband_window: 0.005
+  narrowband_window: 0.1
+  max_frequency: 8000
+  dynamic_range: 50
+  padding_ms: 100

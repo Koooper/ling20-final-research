@@ -1,0 +1,6 @@
+sound,sound_ipa,target,word,gloss,position,manner,place,laryngeal,category,following_vowel,stress,documented_asp,probe,provenance,preceding_seg,notes
+t,,t,ta,fixture word,initial,stop,coronal,plain,stop_plain,,,,,,,
+t,,t,atá,fixture word,intervocalic,stop,coronal,plain,stop_plain,,,,,,,
+t',,t',t'á,fixture word,initial,stop,coronal,ejective,stop_ejective,,,,,,,
+š,,š,ša,fixture word,initial,fricative,postalveolar,plain,fricative_plain,,,,,,,
+k,,k,kage,unused fixture word,initial,stop,velar,plain,stop_plain,,,,,,,

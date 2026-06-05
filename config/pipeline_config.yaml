@@ -4,8 +4,11 @@
 
 speakers:
   S1:
-    formant_ceiling: 5000
+    formant_ceiling: 5000         # single-ceiling (sc_*) co-compat formants in 02
     formant_number: 5
+    ft_low_hz: 4500               # FastTrack ceiling sweep range (canonical formants); set
+    ft_high_hz: 6500              # per speaker by vocal-tract length (Barreda: ~4500-6500 adult M,
+                                  # ~5000-7000 adult F/teen). Widen if winners hit the edge.
     pitch_floor: 75
     pitch_ceiling: 300
     intensity_min_pitch: 100
@@ -14,6 +17,8 @@ speakers:
   S2:
     formant_ceiling: 5000
     formant_number: 5
+    ft_low_hz: 4500
+    ft_high_hz: 6500
     pitch_floor: 75
     pitch_ceiling: 300
     intensity_min_pitch: 100
@@ -47,6 +52,12 @@ analysis:
   f0_contour_step_ms: 10
   locus_equation_min_points: 5
   spectrum_power: 2               # power for spectral moment queries
+  fasttrack:                      # canonical formants via vendored FastTrack (02b_formants.praat)
+    steps: 16                     # ceiling analyses between ft_low_hz and ft_high_hz
+    coefficients: 5              # DCT smoothing order for winner selection
+    n_formants: 4                # track lowest 4 (stabilizes F3); we emit F1-F3
+    buffer_ms: 50               # real-audio pad each side so FastTrack's 25ms edge dead-zone
+                                 # falls outside [t_voi, t_vend] (our onset window)
 
 validation:
   vot_range_ms: [-150, 200]       # allow prevoicing (e.g., -115ms observed)
@@ -61,6 +72,8 @@ validation:
   hand_check_seed: 42
   vot_tolerance_ms: 5             # pipeline vs hand-measured threshold
   cog_tolerance_hz: 200
+  ft_minerror_max: 5000           # flag a FastTrack winner whose error exceeds this; a
+                                  # heuristic penalty adds 10000, so this catches penalized winners
 
 spectrogram:
   wideband_window: 0.005

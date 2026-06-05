@@ -113,6 +113,23 @@ Run `praat/02_extract_measurements.praat` with the same **Speaker id**. It write
 one row per measured sound to `data/derived/extraction/measurements_S1.csv`. This
 file is plain text and opens cleanly in Excel.
 
+### Step 5b — Better formants with FastTrack (analysis half)
+
+The main measurements use a single formant setting. For more accurate vowel formants we also
+run **FastTrack** (a bundled add-on that tries many settings per vowel and keeps the best one).
+These become the study's main formant numbers; the Step 5 ones are kept alongside for comparison.
+
+1. Open `praat/vendor/FastTrack/Fast Track/functions/02b_formants.praat` (Praat → Open Praat
+   script…) and **Run**. Leave **Mode** on `extract`, set **Speaker id**, and make sure the
+   FastTrack settings match `config/pipeline_config.yaml` (the low/high frequency range is set
+   per speaker by voice height). It writes `data/derived/extraction/formants_S1.csv`.
+2. (Optional check) After running the Python pipeline once (Step 7), it writes a short list of
+   sounds to re-check. Re-open `02b_formants.praat`, switch **Mode** to `images`, and Run from
+   the Praat window: it saves side-by-side comparison pictures for just those sounds to
+   `figures/formant_winners/S1/`, so you can confirm FastTrack picked sensible tracks.
+
+This is its own step (like the pictures below) because it does a lot of analysis per vowel.
+
 ### Step 6 — Pictures (optional, run any time)
 
 Run `praat/03_export_spectrograms.praat` to save a figure for each measured sound.

@@ -20,7 +20,8 @@ EXTRACTION_COLUMNS = [
     "burst_intensity_db", "vowel_onset_intensity_db", "burst_vowel_ratio_db",
     "noise_intensity_db", "noise_is_silent",
     "noise_cog_hz", "noise_sd_hz", "noise_skew", "noise_kurt",
-    "f1_onset_hz", "f2_onset_hz", "f3_onset_hz", "f1_mid_hz", "f2_mid_hz", "f3_mid_hz",
+    # single-ceiling formants (co-compat); FastTrack canonical f1_onset_hz/... join in by token_id
+    "sc_f1_onset_hz", "sc_f2_onset_hz", "sc_f3_onset_hz", "sc_f1_mid_hz", "sc_f2_mid_hz", "sc_f3_mid_hz",
     "f0_onset_hz", "h1_h2_db", "hnr_db", "jitter_local", "shimmer_local",
     "dup_flag", "order_flag", "f0_contour_hz",
 ]

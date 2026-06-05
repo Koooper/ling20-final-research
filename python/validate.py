@@ -50,7 +50,7 @@ def _accepted_mask(df):
     return df["accepted"] if "accepted" in df.columns else (df["status"] == "accepted")
 
 
-def validate(merged, config, merge_report=None, *, raise_on_error=True):
+def validate(merged, config, merge_report=None, formant_report=None, *, raise_on_error=True):
     """Validate the merged frame. Returns a ValidationReport; raises on hard errors."""
     rep = ValidationReport()
     v = config.validation
@@ -72,6 +72,33 @@ def validate(merged, config, merge_report=None, *, raise_on_error=True):
             rep.warn(f"{tid}: word has no words_metadata row (not authored yet?)")
         for w in merge_report.get("unused_metadata_words", []):
             rep.warn(f"metadata word never measured: {w!r}")
+
+    # ---- SOFT: FastTrack formant join health ----
+    if formant_report:
+        if formant_report.get("absent"):
+            rep.warn("no FastTrack formants joined (02b_formants.praat not run yet?) - "
+                     "canonical formants are all NA")
+        for tid in formant_report.get("formant_orphans", []):
+            rep.warn(f"formant row with no measurement token (token_id drift?): {tid}")
+        if not formant_report.get("absent"):
+            acc_no_ft = [
+                t for t in formant_report.get("tokens_without_formant", [])
+                if t in set(df.loc[_accepted_mask(df), "token_id"])
+            ]
+            if acc_no_ft:
+                rep.warn(f"{len(acc_no_ft)} accepted token(s) have no FastTrack formant row "
+                         f"(e.g. {acc_no_ft[:3]})")
+
+    # ---- SOFT: FastTrack per-token diagnostics ----
+    if "ft_ceiling_at_bound" in df.columns:
+        m = df["ft_ceiling_at_bound"] == 1
+        for tid in df.loc[m, "token_id"]:
+            rep.warn(f"{tid}: FastTrack winning ceiling hit the range edge (widen ft_low/ft_high?)")
+    if "ft_minerror" in df.columns and "ft_minerror_max" in v:
+        m = df["ft_minerror"].notna() & (df["ft_minerror"] > v["ft_minerror_max"])
+        for tid, val in zip(df.loc[m, "token_id"], df.loc[m, "ft_minerror"]):
+            rep.warn(f"{tid}: FastTrack winner error {val} > {v['ft_minerror_max']} "
+                     "(heuristic penalty? bad track - check the comparison image)")
 
     # ---- SOFT: numeric ranges ----
     def rng(col, key):

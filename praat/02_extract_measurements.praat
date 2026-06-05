@@ -76,7 +76,7 @@ header$ = "file,token_id,speaker,rep_label,segment_label,sound_type,status,"
     ... + "voiced_closure_prop,voiced_closure_onset_ms,"
     ... + "burst_intensity_db,vowel_onset_intensity_db,burst_vowel_ratio_db,noise_intensity_db,noise_is_silent,"
     ... + "noise_cog_hz,noise_sd_hz,noise_skew,noise_kurt,"
-    ... + "f1_onset_hz,f2_onset_hz,f3_onset_hz,f1_mid_hz,f2_mid_hz,f3_mid_hz,"
+    ... + "sc_f1_onset_hz,sc_f2_onset_hz,sc_f3_onset_hz,sc_f1_mid_hz,sc_f2_mid_hz,sc_f3_mid_hz,"
     ... + "f0_onset_hz,h1_h2_db,hnr_db,jitter_local,shimmer_local,"
     ... + "dup_flag,order_flag,f0_contour_hz"
 writeFileLine: outpath$, header$
@@ -332,7 +332,11 @@ procedure emit_segment: .seg_label$, .seg_start, .seg_end
     noise_skew = spectral_moments.skew
     noise_kurt = spectral_moments.kurt
 
-    # ================= FORMANTS =================
+    # ================= FORMANTS (single-ceiling, co-compat) =================
+    # These are the SINGLE-CEILING formants, emitted under sc_* names. FastTrack's
+    # multi-ceiling winner formants are the CANONICAL f1_onset_hz/... and come from
+    # the separate 02b_formants pass (joined by token_id in Python). Kept here for the
+    # single-vs-FastTrack methods comparison.
     f1_onset = undefined
     f2_onset = undefined
     f3_onset = undefined

@@ -56,7 +56,9 @@ session WAV (read-only, one per speaker)
   -> 01_annotate_helper.praat: walk per-word files; per file, 3 phases:
        reps (drag-select -> auto r1,r2..) -> segments (auto s1,s2..) -> landmarks
   -> 02_extract_measurements.praat: frozen battery -> measurements_{speaker}.csv
-  -> Python pipeline: merge metadata -> validate -> derive -> analyze -> figures
+  -> 02b_formants.praat (vendored FastTrack): canonical formants -> formants_{speaker}.csv
+  -> Python pipeline: merge metadata -> merge formants (by token_id) -> validate
+                      -> derive -> analyze -> figures
   -> 03_export_spectrograms.praat: separate compute-heavy Praat script for images
 ```
 
@@ -116,17 +118,44 @@ Fricatives have NO t_clo (no silent closure); t_burst marks frication onset. The
 SECONDARY "document the properties" tier (frication COG/moments + formant transitions),
 not a primary research target. Same landmark-driven battery, no fricative-specific code.
 
-## measurement battery (45 columns)
+## measurement battery (44 columns)
 
 **temporal**: VOT (signed), closure_dur, glottal_oral_interval (signed), vowel_dur. (noise/aspiration duration == VOT, not emitted separately.)
 **voiced-closure** (when t_clo present): voiced_closure_prop, voiced_closure_onset_ms
 **intensity**: burst peak (t_burst→+20ms), vowel-onset mean, burst-to-vowel ratio, noise mean, noise_is_silent
 **spectral moments** (FFT, power=2): noise 4 moments over t_burst→t_voi (= aspiration COG for aspirated, frication COG for affricates AND fricatives, flat for ejective gaps)
-**formants**: F1/F2/F3 at onset (W_von=30ms), F1/F2/F3 at midpoint (vmid center)
+**formants** (single-ceiling, co-compat → `sc_f1/2/3_onset_hz`, `sc_f*_mid_hz`): F1/F2/F3 at onset (W_von=30ms) + midpoint (vmid center). The CANONICAL formants (`f1/2/3_onset_hz`, `f*_mid_hz`) come from FastTrack (02b), joined in Python — see the FastTrack subsystem note.
 **f0**: onset value, contour (semicolon-separated, 10ms steps)
 **H1-H2** (uncorrected): from Spectrum of W_von
 **HNR**: from Harmonicity of W_von
 **jitter/shimmer**: from PointProcess over vowel
+
+## FastTrack formant subsystem (canonical formants)
+
+Formants are measured by FastTrack (Barreda 2021, vendored MIT at `praat/vendor/FastTrack/`),
+which sweeps many ceilings per vowel and picks the smoothest winner — better than 02's single
+ceiling, especially across high/low vowels. FastTrack is CANONICAL: its values own the plain
+names `f1/2/3_onset_hz` + `f*_mid_hz` that derive/analyze read. 02's single-ceiling formants
+ride alongside as `sc_*` for a methods comparison (`output/{spk}/formant_method_comparison.csv`).
+
+- **Pass:** `praat/vendor/FastTrack/Fast Track/functions/02b_formants.praat` (the ONE
+  repo-authored file inside the vendored tree — everything else there is upstream). It lives
+  there because Praat resolves `include` relative to the main script and FastTrack's nested
+  includes assume that location. Two modes: `extract` (headless → `formants_{spk}.csv`) and
+  `images` (GUI → comparison PNGs for the 12% hand-check subset only).
+- **Output** `data/derived/extraction/formants_{speaker}.csv` (token_id-keyed): canonical onset
+  + mid F1-F3, trajectory at 20/50/80%, per-token DCT coefficients (`f*_c0..`), and diagnostics
+  `ft_ceiling_hz` / `ft_minerror` / `ft_ceiling_at_bound`.
+- **Join:** `python/load_formants.py` `merge_formants()` left-joins by token_id — the ONLY
+  token-grain join (everything else is word-grain). token_id MUST match 02 exactly; drift leaves
+  canonical formants NaN → coverage 'missing'. The pass is optional: if `formants_{spk}.csv` is
+  absent, canonical formants are all-NA and the pipeline still runs (validate warns).
+- **Config:** per-speaker `ft_low_hz`/`ft_high_hz` (VTL-dependent sweep range) + global
+  `analysis.fasttrack` (steps/coefficients/n_formants/buffer_ms) + `validation.ft_minerror_max`.
+- **Edge gotcha:** FastTrack's 25ms window dead-zones vowel edges, where our onset window sits,
+  so 02b extracts `[t_voi − buffer, t_vend + buffer]` (buffer_ms of real audio) with times preserved.
+- **Validation flags:** `ft_ceiling_at_bound` (widen range), `ft_minerror > ft_minerror_max`
+  (heuristic penalty / bad track), formant-row orphans, accepted tokens missing a formant row.
 
 ## token data model
 
@@ -203,9 +232,11 @@ data/raw/              read-only session WAVs (one per speaker), e.g. S1.wav
 data/session_textgrids/ session TextGrids with hand-marked word tier (S1.TextGrid)
 data/words/{speaker}/  sliced per-word WAV+TextGrid + words_manifest.csv (00 output;
                        holds the precious per-word annotations — do not blow away)
-data/derived/          extraction CSVs, merged tables, validation reports
+data/derived/          extraction + formants CSVs, merged tables, coverage, validation reports
 praat/                 00_slice_words, 01_annotate_helper, 02_extract_measurements, 03_export_spectrograms
-python/                pipeline modules (run_pipeline, config_loader, load/merge/validate/derive/analyze)
-figures/               q1-q4 analysis figures + spectrograms
-output/                q1-q4 summary tables
+praat/vendor/FastTrack/ vendored FastTrack plugin (MIT) + the repo's 02b_formants.praat pass
+python/                pipeline modules (run_pipeline, config_loader, load_extraction,
+                       load_formants, merge_metadata, validate, derive, analyze, handcheck)
+figures/               q1-q4 analysis figures + spectrograms + formant_winners/ (FastTrack images)
+output/                q1-q4 summary tables + formant_method_comparison
 ```

@@ -19,6 +19,7 @@ import pandas as pd  # noqa: E402
 
 import config_loader  # noqa: E402
 import load_extraction as le  # noqa: E402
+import load_formants as lf  # noqa: E402
 import merge_metadata as mm  # noqa: E402
 import validate as val  # noqa: E402
 from orthography import normalize_orthography  # noqa: E402
@@ -39,8 +40,8 @@ def test_load_extraction():
     df = le.load_extraction(FIX / "measurements_S0.csv")
     # schema columns preserved, in order, before the derived ones
     assert list(df.columns)[: len(le.EXTRACTION_COLUMNS)] == le.EXTRACTION_COLUMNS
-    assert len(df) == 8
-    assert int(df["accepted"].sum()) == 7  # one skipped row excluded
+    assert len(df) == 14
+    assert int(df["accepted"].sum()) == 13  # one skipped row excluded
 
     ta = df.set_index("token_id").loc["S0_01_ta_r1_s1"]
     assert ta["has_t_burst"] and not ta["has_t_clo"]      # word-initial: no closure
@@ -74,7 +75,7 @@ def test_merge(df):
     assert report["orphans_no_manifest"] == []
     assert "S0_99_ghost_r1_s1" in report["orphans_no_metadata"]   # word not authored
     assert "kage" in report["unused_metadata_words"]              # authored, never measured
-    assert report["n_joined"] == 7
+    assert report["n_joined"] == 13
 
     # the apostrophe-variant join (manifest ’  vs  metadata ') resolved via normalize
     ej = merged.set_index("token_id").loc["S0_03_tA_r1_s1"]
@@ -83,20 +84,31 @@ def test_merge(df):
     # orphan carries no identity
     ghost = merged.set_index("token_id").loc["S0_99_ghost_r1_s1"]
     assert pd.isna(ghost["category"])
-    return merged, report
+
+    # FastTrack canonical formants join in by token_id (the only token-grain join)
+    fm = lf.load_formants(FIX / "formants_S0.csv")
+    merged, freport = lf.merge_formants(merged, fm)
+    # canonical f*_onset come from FastTrack; sc_* are the single-ceiling co-compat from 02
+    ta = merged.set_index("token_id").loc["S0_01_ta_r1_s1"]
+    assert ta["f1_onset_hz"] == 610 and ta["sc_f1_onset_hz"] == 600
+    assert "S0_10_ate_r1_s1" in freport["tokens_without_formant"]   # absent from formants CSV
+    return merged, report, freport
 
 
-def test_validate(merged, report, cfg):
+def test_validate(merged, report, freport, cfg):
     # clean fixture: warnings allowed, no HARD errors -> no raise
-    rep = val.validate(merged, cfg, report)
+    rep = val.validate(merged, cfg, report, freport)
     assert rep.ok
     assert any("kage" in w for w in rep.warnings)
     assert any("ghost" in w for w in rep.warnings)
+    # FastTrack diagnostics surface as warnings: ceiling-at-boundary + the absent formant token
+    assert any("ceiling hit the range edge" in w for w in rep.warnings)
+    assert any("no FastTrack formant row" in w for w in rep.warnings)
 
     # HARD: duplicate token_id raises
     dupd = pd.concat([merged, merged.iloc[[0]]], ignore_index=True)
     try:
-        val.validate(dupd, cfg, report)
+        val.validate(dupd, cfg, report, freport)
         raise AssertionError("expected ValidationError on duplicate token_id")
     except val.ValidationError:
         pass
@@ -111,7 +123,7 @@ def test_validate(merged, report, cfg):
     # SOFT: scrambled formants surface as a warning (not a raise)
     bad = merged.copy()
     bad.loc[bad["token_id"] == "S0_01_ta_r1_s1", "f1_onset_hz"] = 2000.0  # F1 > F2
-    rep2 = val.validate(bad, cfg, report, raise_on_error=False)
+    rep2 = val.validate(bad, cfg, report, freport, raise_on_error=False)
     assert any("not ordered" in w for w in rep2.warnings)
 
 
@@ -120,8 +132,8 @@ def main():
     test_normalization_contract()
     df = test_load_extraction()
     test_schema_contract_fails_loud()
-    merged, report = test_merge(df)
-    test_validate(merged, report, cfg)
+    merged, report, freport = test_merge(df)
+    test_validate(merged, report, freport, cfg)
     print("ALL PRE-AUDIT TESTS PASSED")
     print(f"  joined {report['n_joined']}/{report['n_rows']} tokens; "
           f"status counts: {le.status_counts(df)}")

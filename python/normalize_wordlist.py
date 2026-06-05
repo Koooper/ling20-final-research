@@ -37,55 +37,14 @@ stdlib only. Usage:
 import argparse
 import csv
 import sys
-import unicodedata
 from pathlib import Path
 
-# ── normalization tables ────────────────────────────────────────────────────
-CANONICAL_APOSTROPHE = "'"  # plain ASCII '
-
-# everything a human or an export might have used for the ejective mark
-APOSTROPHE_VARIANTS = {
-    "‘",  # ‘  left single quote
-    "’",  # ’  right single quote  (LLC-standard Lakota saltillo)
-    "ʼ",  # ʼ  modifier letter apostrophe
-    "ˈ",  # ˈ  modifier letter vertical line  (seen in "sˈe")
-    "ʹ",  # ʹ  modifier letter prime
-    "′",  # ′  prime
-}
-
-# lookalikes NFC alone will NOT merge because the BASE letter differs.
-# ǧ (U+01E7, regular-g + caron) vs ɡ̌ (U+0261 script-g + U+030C caron):
-# fold the script-g to a plain g so NFC then composes a single ǧ.
-BASE_FOLDS = {
-    "ɡ": "g",  # ɡ  latin small letter script g  →  g
-}
-
-
-def normalize_orthography(s: str) -> str:
-    """Canonicalize a Lakota orthographic string for exact-match joins.
-
-    Apostrophe variants → U+0027, script-g → g, then NFC compose, then collapse
-    whitespace. Idempotent. Safe to run on the TextGrid side too — and you should.
-    """
-    if not s:
-        return s
-    out = []
-    for ch in s:
-        if ch in APOSTROPHE_VARIANTS:
-            out.append(CANONICAL_APOSTROPHE)
-        elif ch in BASE_FOLDS:
-            out.append(BASE_FOLDS[ch])
-        else:
-            out.append(ch)
-    s = unicodedata.normalize("NFC", "".join(out))
-    return " ".join(s.split())
-
-
-def nfc(s: str) -> str:
-    """Light touch for non-join fields (glosses): NFC + whitespace collapse only."""
-    if not s:
-        return s
-    return " ".join(unicodedata.normalize("NFC", s).split())
+# normalize_orthography is shared with the analysis pipeline (merge_metadata) so BOTH
+# sides of the word join canonicalize identically - see python/orthography.py.
+try:                                  # run as a script (python/ on sys.path) ...
+    from orthography import normalize_orthography, nfc
+except ImportError:                   # ... or imported as a package module
+    from python.orthography import normalize_orthography, nfc
 
 
 # ── the one linguistic claim: VERIFY THIS ───────────────────────────────────

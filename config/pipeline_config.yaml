@@ -12,8 +12,13 @@ speakers:
     pitch_floor: 75
     pitch_ceiling: 300
     intensity_min_pitch: 100
-    recording_floor_db: -60       # measure from silence segment, adjust
-    silent_offset_db: 5           # gap_is_silent when gap_rms < floor + offset
+    recording_floor_db: 24        # MEASURED from S1 silence: ~22 dB mean / ~27 dB max across
+                                  # three inter-word silences (laptop-in-booth noise floor, hot
+                                  # levels). Set a touch above the mean so the offset clears the
+                                  # broadband floor without eating real low-energy frication.
+    silent_offset_db: 5           # gap_is_silent when gap_rms < floor + offset (-> ~29 dB).
+                                  # Vowel means sit 49-61 dB; ejective gap blips read 26-27 dB
+                                  # (still < 29 -> correctly silent). Wide separation, no notch.
   S2:
     formant_ceiling: 5000
     formant_number: 5
@@ -22,7 +27,8 @@ speakers:
     pitch_floor: 75
     pitch_ceiling: 300
     intensity_min_pitch: 100
-    recording_floor_db: -60
+    recording_floor_db: 24        # PLACEHOLDER: copied from S1. RE-MEASURE from S2's own
+                                  # silence once the partner's session is recorded/sliced.
     silent_offset_db: 5
 
 tiers:

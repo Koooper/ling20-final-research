@@ -121,34 +121,11 @@ function Find-PythonFromRegistry {
     return $null
 }
 
+
+
 function Find-Python {
-    # 1) registry (PATH- and environment-independent; what the 'py' launcher uses)
-    $r = Find-PythonFromRegistry
-    if ($r) { return $r }
-    # 2) the 'py' launcher, preferred versions first
-    foreach ($v in @($PyTarget,'3.13','3.11','3.10','3')) {
-        $r = Test-Interpreter -Exe 'py' -Pre @("-$v")
-        if ($r) { return $r }
-    }
-    # 3) python / python3 on PATH
-    foreach ($name in @('python','python3')) {
-        $r = Test-Interpreter -Exe $name
-        if ($r) { return $r }
-    }
-    # 4) common install dirs (belt and suspenders; PATH can be stale after a fresh install)
-    $bases = @('C:\Program Files\Python313','C:\Program Files\Python312',
-               'C:\Program Files\Python311','C:\Program Files\Python310')
-    if ($env:LOCALAPPDATA) { $bases = ,(Join-Path $env:LOCALAPPDATA 'Programs\Python') + $bases }
-    foreach ($base in $bases) {
-        if ($base -and (Test-Path $base)) {
-            $exes = Get-ChildItem -Path $base -Filter 'python.exe' -Recurse -Depth 2 -ErrorAction SilentlyContinue
-            foreach ($e in $exes) {
-                $r = Test-Interpreter -Exe $e.FullName
-                if ($r) { return $r }
-            }
-        }
-    }
-    return $null
+    $r = "C:\Users\djjr6\AppData\Local\Programs\Python\Python312\python.exe"
+    return $r
 }
 
 # --- install Python when none is found (no admin) ----------------------------
@@ -265,6 +242,26 @@ if ($LASTEXITCODE -ne 0 -or ("$res" -notmatch 'IMPORTS_OK')) {
     exit 1
 }
 Good "All required packages import cleanly."
+
+# --- pre-create the derived-data folder tree ---------------------------------
+# Praat's createFolder is NOT recursive: 02/02b write to data\derived\extraction and choke if
+# data\derived doesn't already exist. PowerShell's New-Item -Force makes parents, so we touch
+# the whole tree here once. Idempotent; these dirs are .gitignored (only their contents matter).
+Step "Pre-creating the data\derived output folders (Praat can't make nested dirs)..."
+$derivedDirs = @(
+    'data\derived',
+    'data\derived\extraction',
+    'data\derived\merged',
+    'data\derived\validation',
+    'output',
+    'figures',
+    'figures\formant_winners'
+)
+foreach ($d in $derivedDirs) {
+    $full = Join-Path $RepoRoot $d
+    if (-not (Test-Path $full)) { New-Item -ItemType Directory -Path $full -Force | Out-Null }
+}
+Good "Output folders ready."
 
 # --- record the env location for the run scripts -----------------------------
 $ptr = Join-Path $RepoRoot '.venv-path'

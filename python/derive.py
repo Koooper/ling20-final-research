@@ -6,13 +6,24 @@ measures the frozen Praat battery deliberately leaves to analysis, and emits an 
 per-(token, measure) verdict so nothing is ever silently dropped. Never edits raw measures,
 never drops rows.
 
-Three derived columns - the only things that combine/reproject raw measures:
+Four derived columns - the only things that combine/reproject raw measures:
   f0_mid_hz             vowel-body f0: NaN-aware median of the contour's central third.
   f0_onset_excursion_st 12*log2(f0_onset / f0_mid). Semitones of onset f0 above the vowel
                         body; POSITIVE = raised onset (the ejective f0 signature). Within-
                         token, no cross-speaker baseline (fits n=2, per-speaker analysis).
   silent_gap_ms         t_glot_rel - t_burst (= -glottal_oral_ms): the post-burst, sealed-
                         glottis silence of an ejective. Ejectives only.
+  gap_depth_db          vowel_onset_intensity_db - noise_intensity_db: how far the burst->voicing
+                        window sits BELOW the following vowel. A RELATIVE (recording-independent)
+                        depth, so it survives the elevated noise floor that makes raw
+                        noise_intensity_db uninterpretable across sessions. Big for a true silent
+                        ejective gap; small for a noisy/aspirated release.
+
+One gating step (the single principled exception to "never touch raw values"): the noise-window
+spectral moments (noise_cog_hz/sd/skew/kurt) are nulled on the DERIVED frame wherever
+noise_is_silent==1. A silent window has no frication spectrum - its "COG" is just the noise floor,
+which would otherwise pollute the q2/q3 means. The raw extraction CSV is untouched; coverage marks
+these n/a and noise_is_silent itself records why, so nothing is lost.
 
 Coverage ledger - every measure x every token classified as exactly one of:
   present   the measure applies and a value was measured.
@@ -43,10 +54,14 @@ ALL_MEASURES = [
     # f0 / phonation / perturbation
     "f0_onset_hz", "h1_h2_db", "hnr_db", "jitter_local", "shimmer_local",
     # derived
-    "f0_mid_hz", "f0_onset_excursion_st", "silent_gap_ms",
+    "f0_mid_hz", "f0_onset_excursion_st", "silent_gap_ms", "gap_depth_db",
 ]
 
-DERIVED_COLS = ["f0_mid_hz", "f0_onset_excursion_st", "silent_gap_ms"]
+DERIVED_COLS = ["f0_mid_hz", "f0_onset_excursion_st", "silent_gap_ms", "gap_depth_db"]
+
+# Spectral moments of the burst->voicing noise window. Meaningful ONLY when that window has
+# real frication energy; gated to NaN (and coverage 'n/a') where noise_is_silent==1.
+NOISE_MOMENT_MEASURES = ["noise_cog_hz", "noise_sd_hz", "noise_skew", "noise_kurt"]
 
 # Coverage spec: which measures are CONDITIONALLY applicable (can be 'n/a' by design).
 # Everything else in ALL_MEASURES is "always expected" - present if measured, else 'missing'.
@@ -94,6 +109,17 @@ def add_derived(merged):
     # Non-ejectives have no glottal_oral_ms (NaN) -> silent_gap stays NaN.
     df["silent_gap_ms"] = -pd.to_numeric(df.get("glottal_oral_ms"), errors="coerce")
 
+    # relative gap depth (recording-independent): how far the noise window drops below the vowel.
+    von = pd.to_numeric(df.get("vowel_onset_intensity_db"), errors="coerce")
+    noise = pd.to_numeric(df.get("noise_intensity_db"), errors="coerce")
+    df["gap_depth_db"] = von - noise
+
+    # gate silent-window spectral moments: no frication -> no spectrum (see module docstring).
+    silent = pd.to_numeric(df.get("noise_is_silent"), errors="coerce").eq(1)
+    for m in NOISE_MOMENT_MEASURES:
+        if m in df.columns:
+            df.loc[silent, m] = np.nan
+
     return df
 
 
@@ -137,6 +163,11 @@ def build_coverage(df):
     # FastTrack formants: a NaN ft_ceiling_hz means the whole formant row never arrived.
     ft_absent = _col(df, "ft_ceiling_hz").isna().to_numpy()
 
+    # noise spectral moments: applicable only when the window carried frication (not silent).
+    noise_silent = pd.to_numeric(_col(df, "noise_is_silent"), errors="coerce").eq(1)
+    moment_expected = (~noise_silent).to_numpy()
+    moment_na = "silent window: no frication spectrum"
+
     tokens = df["token_id"].to_numpy()
     frames = []
     for m in ALL_MEASURES:
@@ -144,6 +175,9 @@ def build_coverage(df):
             continue
         if m in CLOSURE_MEASURES:
             expected, na_reason, missing_reason = closure_expected, closure_na, closure_missing
+        elif m in NOISE_MOMENT_MEASURES:
+            expected, na_reason = moment_expected, moment_na
+            missing_reason = f"{m}: frication present but moment NA (unmeasurable)"
         elif m in EJECTIVE_MEASURES:
             expected, na_reason, missing_reason = ej_expected, ej_na, ej_missing
         elif m in FT_FORMANT_MEASURES:

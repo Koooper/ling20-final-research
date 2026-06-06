@@ -27,6 +27,7 @@ import handcheck as hc        # noqa: E402
 import load_extraction as le  # noqa: E402
 import load_formants as lf    # noqa: E402
 import merge_metadata as mm   # noqa: E402
+import stats as st            # noqa: E402
 import validate as val        # noqa: E402
 
 VIEW_NAMES = ["full_inventory", "q1_stops", "q2_guttural", "q3_affricate", "q4_ejective"]
@@ -74,6 +75,9 @@ def run_speaker(sid, config, *, extraction_path=None, manifest_path=None,
     summaries = az.analyze(derived, coverage, config)
     comparison = az.formant_method_comparison(merged)
     handcheck = hc.handcheck_sample(merged, config)
+    # per-speaker ejective vs non-ejective t-tests (instructor-mandated; pseudoreplication
+    # caveat lives in stats.py + the paper Methods). Pooled-across-speakers is done in main().
+    ttests = st.ejective_ttests(derived, sid)
     # --- plotting seam: figures(summaries, derived, config, root) would go here ---
 
     # ---- artifacts ----
@@ -86,6 +90,17 @@ def run_speaker(sid, config, *, extraction_path=None, manifest_path=None,
 
     (val_dir / f"validation_{sid}.txt").write_text(report.text(), encoding="utf-8")
     handcheck.to_csv(val_dir / f"handcheck_tokens_{sid}.csv", index=False, encoding="utf-8-sig")
+    ttests.to_csv(out_dir / "ttests.csv", index=False, encoding="utf-8-sig")
+
+    # if the human has filled in a hand-check file, run the agreement comparison.
+    filled = val_dir / f"handcheck_filled_{sid}.csv"
+    handcheck_compared = False
+    if filled.is_file():
+        filled_df = pd.read_csv(filled, encoding="utf-8-sig", keep_default_na=False)
+        hc.handcheck_compare(merged, filled_df, config).to_csv(
+            val_dir / f"handcheck_compare_{sid}.csv", index=False, encoding="utf-8-sig"
+        )
+        handcheck_compared = True
     # the f0_contour ndarray column doesn't belong in a CSV; the string form rides along.
     derived.drop(columns=["f0_contour"], errors="ignore").to_csv(
         merged_dir / f"merged_{sid}.csv", index=False, encoding="utf-8-sig"
@@ -114,6 +129,8 @@ def run_speaker(sid, config, *, extraction_path=None, manifest_path=None,
         "formants_joined": freport["n_joined"],
         "formants_absent": freport.get("absent", False),
         "view_rows": {name: len(t) for name, t in summaries.items()},
+        "n_ttests": len(ttests),
+        "handcheck_compared": handcheck_compared,
         "out_dir": str(out_dir),
     }
 
@@ -130,7 +147,31 @@ def _print_digest(d):
     if d["missing_by_measure"]:
         print(f"  MISSING (applicable but unmeasured) by measure: {d['missing_by_measure']}")
     print(f"  view rows: {d['view_rows']}")
+    print(f"  ejective t-tests: {d['n_ttests']} rows"
+          + ("  (+ hand-check compared)" if d["handcheck_compared"] else ""))
     print(f"  -> {d['out_dir']}")
+
+
+def _pooled_ttests(config, sids):
+    """Pool the per-speaker merged frames and run the instructor-mandated ejective t-tests.
+
+    This is the ONLY place tokens cross the speaker boundary, and only for the directed t-tests
+    (pseudoreplicated - see stats.py). Reads back the merged_{sid}.csv each run_speaker wrote.
+    """
+    merged_dir = config.repo_root / _rel(config, "merged", "data/derived/merged")
+    frames = []
+    for sid in sids:
+        p = merged_dir / f"merged_{sid}.csv"
+        if p.is_file():
+            frames.append(pd.read_csv(p, encoding="utf-8-sig", keep_default_na=False))
+    if not frames:
+        return None
+    pooled = pd.concat(frames, ignore_index=True)
+    out = st.ejective_ttests(pooled, "pooled")
+    out_path = config.repo_root / _rel(config, "output", "output") / "ttests_pooled.csv"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(out_path, index=False, encoding="utf-8-sig")
+    return out_path
 
 
 def main(argv=None):
@@ -145,6 +186,12 @@ def main(argv=None):
     sids = [args.speaker] if args.speaker else config.speaker_ids()
     for sid in sids:
         _print_digest(run_speaker(sid, config, lenient=args.lenient))
+
+    # pooled ejective t-tests across the speakers just run (instructor's literal ask).
+    if len(sids) > 1:
+        pooled_path = _pooled_ttests(config, sids)
+        if pooled_path is not None:
+            print(f"\npooled ejective t-tests -> {pooled_path}")
 
 
 if __name__ == "__main__":

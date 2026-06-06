@@ -22,10 +22,12 @@ import pandas as pd  # noqa: E402
 import analyze as az          # noqa: E402
 import config_loader          # noqa: E402
 import derive as dv           # noqa: E402
+import handcheck as hc        # noqa: E402
 import load_extraction as le  # noqa: E402
 import load_formants as lf    # noqa: E402
 import merge_metadata as mm   # noqa: E402
 import run_pipeline as rp      # noqa: E402
+import stats as st            # noqa: E402
 
 FIX = HERE / "fixtures"
 
@@ -55,6 +57,16 @@ def test_derive_columns():
 
     # a plain stop is not an ejective -> no silent gap
     assert pd.isna(d.loc["S0_01_ta_r1_s1"]["silent_gap_ms"])
+
+    # gap_depth_db = vowel_onset_intensity_db - noise_intensity_db (relative, recording-immune).
+    # ejective tA: 70 - (-58) = 128 (deep silent gap); plain stop ta: 72 - 55 = 17.
+    assert ej["gap_depth_db"] == 128.0
+    assert d.loc["S0_01_ta_r1_s1"]["gap_depth_db"] == 17.0
+
+    # silent-window spectral moments are gated to NaN where noise_is_silent==1 (the ejectives);
+    # a non-silent token keeps its frication COG.
+    assert pd.isna(ej["noise_cog_hz"]) and pd.isna(ej["noise_sd_hz"])
+    assert d.loc["S0_05_tha_r1_s1"]["noise_cog_hz"] == 4000.0
     return derived
 
 
@@ -85,6 +97,12 @@ def test_coverage_reasons(derived):
     # non-ejective -> silent_gap n/a; ejective -> present
     assert verdict("S0_01_ta_r1_s1", "silent_gap_ms")[0] == "n/a"
     assert verdict("S0_03_tA_r1_s1", "silent_gap_ms")[0] == "present"
+
+    # silent window (ejective gap) -> noise moments n/a with the frication reason; a fricated
+    # token keeps a present moment.
+    s, r = verdict("S0_03_tA_r1_s1", "noise_cog_hz")
+    assert s == "n/a" and "frication" in r
+    assert verdict("S0_05_tha_r1_s1", "noise_cog_hz")[0] == "present"
 
     # ate has no FastTrack formant row -> canonical formant is 'missing' with that reason
     s, r = verdict("S0_10_ate_r1_s1", "f1_onset_hz")
@@ -151,6 +169,50 @@ def test_formant_layer():
     assert "S0_99_nonexistent_r1_s1" in rpt["formant_orphans"]
 
 
+def test_stats():
+    derived, _ = dv.derive(_merged())
+    tt = st.ejective_ttests(derived, "S0")
+    assert {"scope", "comparison", "measure", "n_ejective", "n_other",
+            "p_two_tailed", "cohens_d", "note"} <= set(tt.columns)
+    assert (tt["scope"] == "S0").all()
+    assert set(tt["comparison"]) >= {"overall", "stop", "affricate", "fricative"}
+
+    def cell(comp, meas):
+        row = tt[(tt["comparison"] == comp) & (tt["measure"] == meas)]
+        assert len(row) == 1
+        return row.iloc[0]
+
+    # overall: 2 ejectives (tA stop + cA affricate) vs the non-ejective obstruents -> real test.
+    ov = cell("overall", "vot_ms")
+    assert ov["n_ejective"] == 2 and ov["n_other"] >= 2
+    assert pd.notna(ov["p_two_tailed"]) and pd.notna(ov["cohens_d"])
+
+    # within stop manner there is only ONE ejective token -> guarded, no p-value, explained.
+    stp = cell("stop", "vot_ms")
+    assert stp["n_ejective"] == 1 and "n<2" in stp["note"] and pd.isna(stp["p_two_tailed"])
+
+    # gated silent-window moments mean both ejectives are NaN for noise_cog overall -> guarded too.
+    cog = cell("overall", "noise_cog_hz")
+    assert cog["n_ejective"] == 0 and "n<2" in cog["note"]
+
+
+def test_handcheck_compare():
+    cfg = config_loader.load_config()
+    merged = _merged()
+    # vot_ms for ta_r1 is 15.0; noise_cog for tha is 4000.0 (tolerances: 5 ms / 200 Hz).
+    filled = pd.DataFrame([
+        {"token_id": "S0_01_ta_r1_s1", "hand_vot_ms": 17.0,  "hand_noise_cog_hz": ""},     # within
+        {"token_id": "S0_05_tha_r1_s1", "hand_vot_ms": "",   "hand_noise_cog_hz": 4500.0}, # OUT (500>200)
+        {"token_id": "S0_02_ata_r1_s1", "hand_vot_ms": 99.0, "hand_noise_cog_hz": ""},      # OUT (84>5)
+    ])
+    cmp = hc.handcheck_compare(merged, filled, cfg)
+    v = cmp.set_index(["token_id", "measure"])["verdict"]
+    assert v[("S0_01_ta_r1_s1", "vot_ms")] == "within"
+    assert v[("S0_01_ta_r1_s1", "noise_cog_hz")] == "no_hand_value"
+    assert v[("S0_05_tha_r1_s1", "noise_cog_hz")] == "OUT"
+    assert v[("S0_02_ata_r1_s1", "vot_ms")] == "OUT"
+
+
 def test_pipeline_end_to_end():
     cfg = config_loader.load_config()
     with tempfile.TemporaryDirectory() as tmp:
@@ -169,10 +231,13 @@ def test_pipeline_end_to_end():
         assert (root / "data/derived/validation/validation_S0.txt").is_file()
         assert (root / "data/derived/validation/handcheck_tokens_S0.csv").is_file()
         assert (root / "output/S0/formant_method_comparison.csv").is_file()
+        assert (root / "output/S0/ttests.csv").is_file()
         for name in rp.VIEW_NAMES:
             assert (root / "output" / "S0" / f"{name}.csv").is_file()
 
         assert digest["validation_ok"]
+        assert digest["n_ttests"] > 0
+        assert digest["handcheck_compared"] is False   # no filled file in the temp dir
         assert not digest["formants_absent"] and digest["formants_joined"] >= 1
         # the deliberately-unmarked t_clo shows up as a real gap in the digest
         assert digest["missing_by_measure"].get("closure_dur_ms", 0) >= 1
@@ -193,6 +258,8 @@ def main():
     test_coverage_reasons(derived)
     test_views()
     test_formant_layer()
+    test_stats()
+    test_handcheck_compare()
     test_pipeline_end_to_end()
     print("ALL MATH-LAYER TESTS PASSED")
 

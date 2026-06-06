@@ -72,8 +72,8 @@ def build_views():
             "q4_ejective",
             lambda d: d["laryngeal"].eq("ejective"),
             ["manner", "place"],
-            ["silent_gap_ms", "burst_vowel_ratio_db", "f0_onset_hz", "f0_onset_excursion_st",
-             "h1_h2_db", "hnr_db", "jitter_local", "shimmer_local"],
+            ["silent_gap_ms", "gap_depth_db", "burst_vowel_ratio_db", "f0_onset_hz",
+             "f0_onset_excursion_st", "h1_h2_db", "hnr_db", "jitter_local", "shimmer_local"],
         ),
     ]
 

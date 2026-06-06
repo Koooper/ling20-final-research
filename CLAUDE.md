@@ -2,7 +2,8 @@
 
 ## project overview
 
-descriptive acoustic phonetics study of the Lakota (Oglala, Pine Ridge) obstruent system. two young revitalization-generation speakers, elicited citation forms in carrier phrase. NOT a statistical generalization study — n=2, analyzed per speaker, never pooled.
+descriptive acoustic phonetics study of the Lakota (Oglala, Pine Ridge) obstruent system. two young revitalization-generation speakers, elicited citation forms in carrier phrase. NOT a statistical generalization study — n=2, analyzed per speaker (the lone exception: the
+instructor-mandated ejective t-tests, see scope guardrails).
 
 ### targets
 - coronal stop series: /t tʰ tȟ tʼ/ (plain, glottal-aspirated, velar/uvular-aspirated, ejective)
@@ -215,7 +216,19 @@ notes. `probe` is OPTIONAL free-text (intended-focus annotation) — NOT a compu
 descriptive case study of two speakers. Oglala/Pine Ridge only, citation register only.
 - allowed: characterize these speakers; within-speaker patterns; compare to documented descriptions (Buechel 1939; Ullrich 2008)
 - NOT claimed: anything about Lakota generally, revitalization speakers as a class, other dialects, elder/L1 speakers, connected speech, generational change, causation
-- no mixed models, no pooled analysis, no inferential generalization
+- no mixed models, no inferential generalization
+
+### the ONE sanctioned exception: ejective vs non-ejective t-tests (`stats.py`)
+The supervising instructor explicitly directed a two-tailed independent (Welch) t-test of
+ejective vs non-ejective obstruents. We run it BOTH pooled-across-speakers (the literal ask)
+AND per-speaker, each reported with n/mean/sd + Cohen's d. This is the only place tokens cross
+the speaker boundary. It is PSEUDOREPLICATED (Hurlbert 1984): repetitions within a word and the
+two speakers are not independent, so effective N is inflated and the p-values are
+anticonservative. Frame it in Methods/Limitations as a within-sample descriptive contrast ("is
+there a measurable difference in THIS data?"), NOT inference about Lakota or revitalization
+speakers. Non-ejective is compared (a) overall and (b) split by manner (stop/affricate/fricative
+separately) so VOT etc. aren't compared across manners. Output: `output/{spk}/ttests.csv` +
+`output/ttests_pooled.csv`. Everything ELSE in the pipeline stays strictly per-speaker.
 
 ## existing code references
 

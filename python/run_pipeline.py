@@ -23,6 +23,7 @@ import pandas as pd           # noqa: E402
 import analyze as az          # noqa: E402
 import config_loader          # noqa: E402
 import derive as dv           # noqa: E402
+import figures as figs        # noqa: E402
 import handcheck as hc        # noqa: E402
 import load_extraction as le  # noqa: E402
 import load_formants as lf    # noqa: E402
@@ -30,7 +31,8 @@ import merge_metadata as mm   # noqa: E402
 import stats as st            # noqa: E402
 import validate as val        # noqa: E402
 
-VIEW_NAMES = ["full_inventory", "q1_stops", "q2_guttural", "q3_affricate", "q4_ejective"]
+VIEW_NAMES = ["full_inventory", "q1_stops", "q2_guttural", "q2e_lexicalization",
+              "q3_affricate", "q4_ejective"]
 
 
 def _rel(config, key, default):
@@ -78,12 +80,12 @@ def run_speaker(sid, config, *, extraction_path=None, manifest_path=None,
     # per-speaker ejective vs non-ejective t-tests (instructor-mandated; pseudoreplication
     # caveat lives in stats.py + the paper Methods). Pooled-across-speakers is done in main().
     ttests = st.ejective_ttests(derived, sid)
-    # --- plotting seam: figures(summaries, derived, config, root) would go here ---
 
     # ---- artifacts ----
     val_dir = root / _rel(config, "validation", "data/derived/validation")
     merged_dir = root / _rel(config, "merged", "data/derived/merged")
     out_dir = root / _rel(config, "output", "output") / sid
+    fig_dir = root / _rel(config, "figures", "figures") / sid
     derived_root = merged_dir.parent                      # data/derived/
     for d in (val_dir, merged_dir, out_dir, derived_root):
         d.mkdir(parents=True, exist_ok=True)
@@ -110,6 +112,10 @@ def run_speaker(sid, config, *, extraction_path=None, manifest_path=None,
         table.to_csv(out_dir / f"{name}.csv", index=False, encoding="utf-8-sig")
     comparison.to_csv(out_dir / "formant_method_comparison.csv", index=False, encoding="utf-8-sig")
 
+    # per-speaker figures (NEVER pooled). make_figures swallows per-figure errors and returns
+    # a {written, failed} digest, so a thin/empty cell can't abort the run.
+    fig_result = figs.make_figures(derived, sid, fig_dir)
+
     # ---- digest ----
     # 'missing' = applicable-but-absent. Count only ACCEPTED tokens here: a skipped/garbage
     # token legitimately has no FastTrack row, so it isn't a gap to chase (the full coverage
@@ -131,7 +137,10 @@ def run_speaker(sid, config, *, extraction_path=None, manifest_path=None,
         "view_rows": {name: len(t) for name, t in summaries.items()},
         "n_ttests": len(ttests),
         "handcheck_compared": handcheck_compared,
+        "figures_written": len(fig_result["written"]),
+        "figures_failed": fig_result["failed"],
         "out_dir": str(out_dir),
+        "fig_dir": str(fig_dir),
     }
 
 
@@ -149,6 +158,9 @@ def _print_digest(d):
     print(f"  view rows: {d['view_rows']}")
     print(f"  ejective t-tests: {d['n_ttests']} rows"
           + ("  (+ hand-check compared)" if d["handcheck_compared"] else ""))
+    print(f"  figures: {d['figures_written']} written -> {d['fig_dir']}")
+    if d["figures_failed"]:
+        print(f"  FIGURE FAILURES: {d['figures_failed']}")
     print(f"  -> {d['out_dir']}")
 
 

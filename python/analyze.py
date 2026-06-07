@@ -51,7 +51,9 @@ def build_views():
         View(  # Q1 - plain stop realization + aspiration contrast
             "q1_stops",
             lambda d: d["manner"].eq("stop"),
-            ["laryngeal", "place", "position"],
+            # stress trails the grouping (it self-degrades out when unfilled): the "initial AND
+            # stressed positions" lens of Q1, split only where the metadata carries it.
+            ["laryngeal", "place", "position", "stress"],
             ["vot_ms", "voiced_closure_prop", "closure_dur_ms", "voiced_closure_onset_ms"],
         ),
         View(  # Q2 - guttural (uvular vs glottal) aspiration localization
@@ -75,6 +77,14 @@ def build_views():
             ["silent_gap_ms", "gap_depth_db", "burst_vowel_ratio_db", "f0_onset_hz",
              "f0_onset_excursion_st", "h1_h2_db", "hnr_db", "jitter_local", "shimmer_local"],
         ),
+        View(  # Q2e - /C_e/ guttural lexicalization: does realized COG track the DOCUMENTED
+            # guttural (documented_asp), or is /e/-context aspiration gradient coarticulation?
+            # documented_asp is filled for /C_e/ items only, so non-blank IS the selector.
+            "q2e_lexicalization",
+            lambda d: _nonblank(d["documented_asp"]),
+            ["documented_asp", "laryngeal", "place"],
+            ["noise_cog_hz", "noise_sd_hz", "noise_skew", "noise_kurt", "vot_ms"],
+        ),
     ]
 
 
@@ -82,6 +92,15 @@ def _accepted(df):
     if "accepted" in df.columns:
         return df["accepted"].fillna(False).astype(bool)
     return df["status"].eq("accepted")
+
+
+def _nonblank(s):
+    """Boolean mask: a metadata cell carrying a real value. NA, ""/whitespace, and the literal
+    "nan" all count as blank - so a view selecting on an unfilled column selects nothing (and
+    on the analyze()-injected all-NA column, selects nothing) rather than everything."""
+    s = s.astype("string")
+    stripped = s.str.strip()
+    return s.notna() & stripped.ne("") & stripped.str.lower().ne("nan")
 
 
 def _has_values(s):

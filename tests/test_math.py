@@ -22,6 +22,7 @@ import pandas as pd  # noqa: E402
 import analyze as az          # noqa: E402
 import config_loader          # noqa: E402
 import derive as dv           # noqa: E402
+import figures as figs        # noqa: E402
 import handcheck as hc        # noqa: E402
 import load_extraction as le  # noqa: E402
 import load_formants as lf    # noqa: E402
@@ -234,6 +235,10 @@ def test_pipeline_end_to_end():
         assert (root / "output/S0/ttests.csv").is_file()
         for name in rp.VIEW_NAMES:
             assert (root / "output" / "S0" / f"{name}.csv").is_file()
+        # figures generated per speaker; none crashed, at least one PNG landed
+        assert digest["figures_failed"] == [], digest["figures_failed"]
+        assert digest["figures_written"] >= 1
+        assert any((root / "figures" / "S0").glob("*.png"))
 
         assert digest["validation_ok"]
         assert digest["n_ttests"] > 0
@@ -253,6 +258,17 @@ def test_pipeline_end_to_end():
         assert (root / "output/S0/q4_ejective.csv").read_bytes() == before
 
 
+def test_figures_smoke():
+    """Every figure draws (or cleanly returns None) on the fixture frame - none may raise."""
+    derived, _ = dv.derive(_merged())
+    with tempfile.TemporaryDirectory() as tmp:
+        res = figs.make_figures(derived, "S0", Path(tmp))
+        assert res["failed"] == [], res["failed"]
+        assert res["written"], "no figures written for the fixture"
+        for p in res["written"]:
+            assert p.is_file() and p.stat().st_size > 0
+
+
 def main():
     derived = test_derive_columns()
     test_coverage_reasons(derived)
@@ -260,6 +276,7 @@ def main():
     test_formant_layer()
     test_stats()
     test_handcheck_compare()
+    test_figures_smoke()
     test_pipeline_end_to_end()
     print("ALL MATH-LAYER TESTS PASSED")
 

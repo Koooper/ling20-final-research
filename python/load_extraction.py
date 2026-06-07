@@ -12,30 +12,73 @@ import pandas as pd
 # The frozen schema, in order, exactly as 02_extract_measurements.praat writes it.
 # A mismatch here means the Praat script and the Python pipeline have drifted apart.
 EXTRACTION_COLUMNS = [
-    "file", "token_id", "speaker", "rep_label", "segment_label", "sound_type", "status",
-    "seg_start_s", "seg_end_s",
-    "t_clo_s", "t_burst_s", "t_voi_s", "t_vend_s", "t_glot_rel_s", "t_pvend_s",
-    "vot_ms", "closure_dur_ms", "glottal_oral_ms", "vowel_dur_ms",
-    "voiced_closure_prop", "voiced_closure_onset_ms",
-    "burst_intensity_db", "vowel_onset_intensity_db", "burst_vowel_ratio_db",
-    "noise_intensity_db", "noise_is_silent",
-    "noise_cog_hz", "noise_sd_hz", "noise_skew", "noise_kurt",
+    "file",
+    "token_id",
+    "speaker",
+    "rep_label",
+    "segment_label",
+    "sound_type",
+    "status",
+    "seg_start_s",
+    "seg_end_s",
+    "t_clo_s",
+    "t_burst_s",
+    "t_voi_s",
+    "t_vend_s",
+    "t_glot_rel_s",
+    "t_pvend_s",
+    "vot_ms",
+    "closure_dur_ms",
+    "glottal_oral_ms",
+    "vowel_dur_ms",
+    "voiced_closure_prop",
+    "voiced_closure_onset_ms",
+    "burst_intensity_db",
+    "vowel_onset_intensity_db",
+    "burst_vowel_ratio_db",
+    "noise_intensity_db",
+    "noise_is_silent",
+    "noise_cog_hz",
+    "noise_sd_hz",
+    "noise_skew",
+    "noise_kurt",
     # single-ceiling formants (co-compat); FastTrack canonical f1_onset_hz/... join in by token_id
-    "sc_f1_onset_hz", "sc_f2_onset_hz", "sc_f3_onset_hz", "sc_f1_mid_hz", "sc_f2_mid_hz", "sc_f3_mid_hz",
-    "f0_onset_hz", "h1_h2_db", "hnr_db", "jitter_local", "shimmer_local",
-    "dup_flag", "order_flag", "f0_contour_hz",
+    "sc_f1_onset_hz",
+    "sc_f2_onset_hz",
+    "sc_f3_onset_hz",
+    "sc_f1_mid_hz",
+    "sc_f2_mid_hz",
+    "sc_f3_mid_hz",
+    "f0_onset_hz",
+    "h1_h2_db",
+    "hnr_db",
+    "jitter_local",
+    "shimmer_local",
+    "dup_flag",
+    "order_flag",
+    "f0_contour_hz",
 ]
 
 # columns kept as text (everything else is coerced to float)
 STRING_COLS = {
-    "file", "token_id", "speaker", "rep_label", "segment_label",
-    "sound_type", "status", "f0_contour_hz",
+    "file",
+    "token_id",
+    "speaker",
+    "rep_label",
+    "segment_label",
+    "sound_type",
+    "status",
+    "f0_contour_hz",
 }
 
 # landmark point -> its seconds column; drives the has_* availability flags
 LANDMARK_COLS = {
-    "t_clo": "t_clo_s", "t_burst": "t_burst_s", "t_voi": "t_voi_s",
-    "t_vend": "t_vend_s", "t_glot_rel": "t_glot_rel_s", "t_pvend": "t_pvend_s",
+    "t_clo": "t_clo_s",
+    "t_burst": "t_burst_s",
+    "t_voi": "t_voi_s",
+    "t_vend": "t_vend_s",
+    "t_glot_rel": "t_glot_rel_s",
+    "t_pvend": "t_pvend_s",
 }
 
 
@@ -45,7 +88,7 @@ class SchemaError(ValueError):
 
 def parse_f0_contour(s):
     """';'-joined contour string -> float ndarray ('NA' -> nan). Empty -> empty array."""
-    if s is None or (isinstance(s, float) and np.isnan(s)) or s in ("", "NA"):
+    if s is None or pd.isna(s) or s in ("", "NA"):
         return np.array([], dtype=float)
     vals = []
     for tok in str(s).split(";"):

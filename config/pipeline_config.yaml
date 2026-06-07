@@ -4,31 +4,35 @@
 
 speakers:
   S1:
-    formant_ceiling: 5000         # single-ceiling (sc_*) co-compat formants in 02
+    formant_ceiling: 5000 # single-ceiling (sc_*) co-compat formants in 02
     formant_number: 5
-    ft_low_hz: 4500               # FastTrack ceiling sweep range (canonical formants); set
-    ft_high_hz: 6500              # per speaker by vocal-tract length (Barreda: ~4500-6500 adult M,
-                                  # ~5000-7000 adult F/teen). Widen if winners hit the edge.
+    ft_low_hz: 4000 # FastTrack ceiling sweep range (canonical formants); set
+    ft_high_hz:
+      7000 # per speaker by vocal-tract length (Barreda: ~4500-6500 adult M,
+      # ~5000-7000 adult F/teen). Widen if winners hit the edge.
     pitch_floor: 75
     pitch_ceiling: 300
     intensity_min_pitch: 100
-    recording_floor_db: 24        # MEASURED from S1 silence: ~22 dB mean / ~27 dB max across
-                                  # three inter-word silences (laptop-in-booth noise floor, hot
-                                  # levels). Set a touch above the mean so the offset clears the
-                                  # broadband floor without eating real low-energy frication.
-    silent_offset_db: 5           # gap_is_silent when gap_rms < floor + offset (-> ~29 dB).
-                                  # Vowel means sit 49-61 dB; ejective gap blips read 26-27 dB
-                                  # (still < 29 -> correctly silent). Wide separation, no notch.
+    recording_floor_db:
+      24 # MEASURED from S1 silence: ~22 dB mean / ~27 dB max across
+      # three inter-word silences (laptop-in-booth noise floor, hot
+      # levels). Set a touch above the mean so the offset clears the
+      # broadband floor without eating real low-energy frication.
+    silent_offset_db:
+      5 # gap_is_silent when gap_rms < floor + offset (-> ~29 dB).
+      # Vowel means sit 49-61 dB; ejective gap blips read 26-27 dB
+      # (still < 29 -> correctly silent). Wide separation, no notch.
   S2:
     formant_ceiling: 5000
     formant_number: 5
-    ft_low_hz: 4500
-    ft_high_hz: 6500
+    ft_low_hz: 4000
+    ft_high_hz: 7000
     pitch_floor: 75
     pitch_ceiling: 300
     intensity_min_pitch: 100
-    recording_floor_db: 24        # PLACEHOLDER: copied from S1. RE-MEASURE from S2's own
-                                  # silence once the partner's session is recorded/sliced.
+    recording_floor_db:
+      24 # PLACEHOLDER: copied from S1. RE-MEASURE from S2's own
+      # silence once the partner's session is recorded/sliced.
     silent_offset_db: 5
 
 tiers:
@@ -47,26 +51,27 @@ paths:
   validation: "data/derived/validation"
   figures: "figures"
   output: "output"
-  words_metadata: "config/words_metadata.csv"   # word-grain identity (normalize_wordlist.py output)
+  words_metadata: "config/words_metadata.csv" # word-grain identity (normalize_wordlist.py output)
   # per-speaker slice manifest: {words}/{speaker}/words_manifest.csv (UTF-16, Praat-written)
   # merge join chain: measurements.file -> manifest.filename -> manifest.word_label
   #                   -> normalize_orthography() -> words_metadata.word
 
 analysis:
-  von_window_ms: 30               # vowel-onset window
-  von_max_proportion: 0.5         # cap at 50% of vowel duration
+  von_window_ms: 30 # vowel-onset window
+  von_max_proportion: 0.5 # cap at 50% of vowel duration
   f0_contour_step_ms: 10
   locus_equation_min_points: 5
-  spectrum_power: 2               # power for spectral moment queries
-  fasttrack:                      # canonical formants via vendored FastTrack (02b_formants.praat)
-    steps: 16                     # ceiling analyses between ft_low_hz and ft_high_hz
-    coefficients: 5              # DCT smoothing order for winner selection
-    n_formants: 4                # track lowest 4 (stabilizes F3); we emit F1-F3
-    buffer_ms: 50               # real-audio pad each side so FastTrack's 25ms edge dead-zone
-                                 # falls outside [t_voi, t_vend] (our onset window)
+  spectrum_power: 2 # power for spectral moment queries
+  fasttrack: # canonical formants via vendored FastTrack (02b_formants.praat)
+    steps: 16 # ceiling analyses between ft_low_hz and ft_high_hz
+    coefficients: 5 # DCT smoothing order for winner selection
+    n_formants: 4 # track lowest 4 (stabilizes F3); we emit F1-F3
+    buffer_ms:
+      50 # real-audio pad each side so FastTrack's 25ms edge dead-zone
+      # falls outside [t_voi, t_vend] (our onset window)
 
 validation:
-  vot_range_ms: [-150, 200]       # allow prevoicing (e.g., -115ms observed)
+  vot_range_ms: [-150, 200] # allow prevoicing (e.g., -115ms observed)
   closure_dur_range_ms: [10, 500]
   burst_dur_range_ms: [1, 80]
   cog_range_hz: [500, 12000]
@@ -74,12 +79,13 @@ validation:
   f2_range_hz: [500, 3000]
   f3_range_hz: [1500, 4500]
   min_tokens_per_category: 2
-  hand_check_fraction: 0.12       # ~12% of tokens
+  hand_check_fraction: 0.12 # ~12% of tokens
   hand_check_seed: 42
-  vot_tolerance_ms: 5             # pipeline vs hand-measured threshold
+  vot_tolerance_ms: 5 # pipeline vs hand-measured threshold
   cog_tolerance_hz: 200
-  ft_minerror_max: 5000           # flag a FastTrack winner whose error exceeds this; a
-                                  # heuristic penalty adds 10000, so this catches penalized winners
+  ft_minerror_max:
+    5000 # flag a FastTrack winner whose error exceeds this; a
+    # heuristic penalty adds 10000, so this catches penalized winners
 
 spectrogram:
   wideband_window: 0.005

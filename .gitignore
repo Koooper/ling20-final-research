@@ -54,6 +54,10 @@ output/
 # Large media files (source)
 data/raw/
 
+# Backups / recovery artifacts (e.g. words_manifest.csv.drifted.bak from drift recovery)
+*.bak
+*.drifted.bak
+
 # OS
 .DS_Store
 .AppleDouble

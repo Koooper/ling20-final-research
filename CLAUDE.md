@@ -221,14 +221,22 @@ descriptive case study of two speakers. Oglala/Pine Ridge only, citation registe
 ### the ONE sanctioned exception: ejective vs non-ejective t-tests (`stats.py`)
 The supervising instructor explicitly directed a two-tailed independent (Welch) t-test of
 ejective vs non-ejective obstruents. We run it BOTH pooled-across-speakers (the literal ask)
-AND per-speaker, each reported with n/mean/sd + Cohen's d. This is the only place tokens cross
-the speaker boundary. It is PSEUDOREPLICATED (Hurlbert 1984): repetitions within a word and the
+AND per-speaker, each reported with n/mean/sd + Cohen's d. This is the only place tokens are
+POOLED across the speaker boundary (concatenated into one undifferentiated group). It is
+PSEUDOREPLICATED (Hurlbert 1984): repetitions within a word and the
 two speakers are not independent, so effective N is inflated and the p-values are
 anticonservative. Frame it in Methods/Limitations as a within-sample descriptive contrast ("is
 there a measurable difference in THIS data?"), NOT inference about Lakota or revitalization
 speakers. Non-ejective is compared (a) overall and (b) split by manner (stop/affricate/fricative
 separately) so VOT etc. aren't compared across manners. Output: `output/{spk}/ttests.csv` +
-`output/ttests_pooled.csv`. Everything ELSE in the pipeline stays strictly per-speaker.
+`output/ttests_pooled.csv`.
+
+The one OTHER place the pipeline looks across speakers is the descriptive comparison layer
+(`compare.py`): combined speaker-dodged figures + per-(view×measure) comparison tables (Cohen's
+d, Gaussian-overlap coeff, ratio-of-means + CV, word-level Pearson r). It keeps the two speakers
+SEPARATE — per-speaker stats juxtaposed, never pooled — and emits NO p-values. It is DESCRIPTIVE
+ONLY ("how similar do THESE two look?"), never inference; it does not widen the t-test loophole.
+Everything ELSE in the pipeline stays strictly per-speaker.
 
 ## existing code references
 
@@ -249,7 +257,9 @@ data/derived/          extraction + formants CSVs, merged tables, coverage, vali
 praat/                 00_slice_words, 01_annotate_helper, 02_extract_measurements, 03_export_spectrograms
 praat/vendor/FastTrack/ vendored FastTrack plugin (MIT) + the repo's 02b_formants.praat pass
 python/                pipeline modules (run_pipeline, config_loader, load_extraction,
-                       load_formants, merge_metadata, validate, derive, analyze, handcheck)
+                       load_formants, merge_metadata, validate, derive, analyze, stats,
+                       figures, compare, handcheck)
 figures/               q1-q4 analysis figures + spectrograms + formant_winners/ (FastTrack images)
-output/                q1-q4 summary tables + formant_method_comparison
+                       + compare/ (cross-speaker dodged figures)
+output/                q1-q4 summary tables + formant_method_comparison + compare/ + ttests_pooled
 ```

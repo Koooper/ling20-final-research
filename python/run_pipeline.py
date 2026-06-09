@@ -21,6 +21,7 @@ sys.path.insert(0, str(HERE))
 import pandas as pd           # noqa: E402
 
 import analyze as az          # noqa: E402
+import compare as cmp         # noqa: E402
 import config_loader          # noqa: E402
 import derive as dv           # noqa: E402
 import figures as figs        # noqa: E402
@@ -199,11 +200,20 @@ def main(argv=None):
     for sid in sids:
         _print_digest(run_speaker(sid, config, lenient=args.lenient))
 
-    # pooled ejective t-tests across the speakers just run (instructor's literal ask).
+    # cross-speaker layer (only when >1 speaker). Two boundary-crossers live here:
+    #   1. pooled ejective t-tests - the instructor's literal ask (pseudoreplicated; see stats.py)
+    #   2. descriptive comparison - tables + speaker-faceted figures, NO p-values (see compare.py)
     if len(sids) > 1:
         pooled_path = _pooled_ttests(config, sids)
         if pooled_path is not None:
             print(f"\npooled ejective t-tests -> {pooled_path}")
+
+        digest = cmp.run_compare(config, sids)
+        if digest is not None:
+            print(f"compare tables  -> {digest['table_dir']}  ({len(digest['tables'])} views)")
+            print(f"compare figures -> {digest['figures_written']} written, {digest['fig_dir']}")
+            if digest["figures_failed"]:
+                print(f"  COMPARE FIGURE FAILURES: {digest['figures_failed']}")
 
 
 if __name__ == "__main__":

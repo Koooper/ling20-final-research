@@ -160,9 +160,26 @@ sounds (useful for double-checking them).
 
 ### Step 7 — Analyse (Python)
 
-The Python tools in `python/` merge the measurements with the word list, run the
-quality checks, and produce the tables and figures. See that folder's notes when it
-is ready. *(Still being built.)*
+The Python tools in `python/` do the rest in one command. From this folder, run:
+
+```
+python python/run_pipeline.py
+```
+
+(Use the environment `setup.cmd` built — activate it, or call its Python directly as
+`.venv\Scripts\python python\run_pipeline.py`.) With no options it processes every
+speaker in `config/pipeline_config.yaml`; add `--speaker S1` to do just one. It merges
+the measurements with the word list, joins the FastTrack formants, runs the quality
+checks, and writes:
+
+- per-speaker result tables to `output/<speaker>/` and figures to `figures/<speaker>/`;
+- a validation report and a ~12% hand-check list to `data/derived/validation/`;
+- when both speakers are present, a side-by-side speaker comparison (tables in
+  `output/compare/`, figures in `figures/compare/`) plus the instructor-mandated
+  ejective t-tests (`output/ttests_pooled.csv`).
+
+Run it any time after annotating — it regenerates everything from your marks, so the
+outputs always match the current TextGrids.
 
 ---
 
@@ -201,7 +218,7 @@ be pooled back together for analysis.
 
 ## Part 4 — Opening the spreadsheets in Excel
 
-- `measurements_S1.csv` and `config/token_metadata.csv` open cleanly by
+- `measurements_S1.csv` and `config/words_metadata.csv` open cleanly by
   double-clicking — they are saved so Excel reads the accented Lakota letters
   correctly.
 - `words_manifest.csv` keeps the full Lakota spelling of each word, which can confuse
@@ -226,7 +243,7 @@ praat/
 python/                Step 7: the analysis tools.
 config/
   pipeline_config.yaml   Settings (per-speaker pitch range, etc.).
-  token_metadata.csv     The word list with each sound's details, filled in by the team.
+  words_metadata.csv     The word list with each sound's details, filled in by the team.
 figures/  output/        Where figures and result tables are saved.
 ```
 
@@ -242,8 +259,10 @@ the "guttural" aspiration sits, how the *ch* sounds differ from each other, and 
 strong the ejectives are.
 
 Because there are only two speakers, the findings describe **these speakers**; they
-are not claims about Lakota in general. The analysis keeps the two speakers separate
-and never pools them.
+are not claims about Lakota in general. The main analysis keeps the two speakers
+separate. Two clearly-labelled exceptions look across them: an instructor-mandated
+ejective t-test (reported with its pseudoreplication caveat) and a purely descriptive
+side-by-side comparison — neither is treated as a generalisation about Lakota.
 
 The scripts and analysis code are research tools; their use is documented in the
 paper's Methods section, and a portion of the measurements is re-checked by hand

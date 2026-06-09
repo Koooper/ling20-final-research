@@ -3,8 +3,8 @@
 Greenfield plotting layer. Draws from ONE speaker's derived token-grain frame (the
 `merged_{sid}.csv` that run_pipeline writes - it is the post-derive frame, so silent_gap_ms,
 gap_depth_db, f0_mid_hz and f0_onset_excursion_st are already columns). The two speakers are
-NEVER pooled; every figure is one speaker's tokens. When the partner lands, call this per
-speaker and facet the PNGs side by side in the paper - the stats stay separate either way.
+NEVER pooled; every figure is one speaker's tokens. run_pipeline calls this per speaker; the
+cross-speaker side-by-side views live in `compare.py` (descriptive only, stats stay separate).
 
 Governing principle for n=2: never hide a token behind a bar + error bar. Every distribution
 is a strip of individual points (seeded jitter, deterministic) with a box overlay and an
@@ -44,7 +44,7 @@ if str(HERE) not in sys.path:
 # shared vocabulary: orderings, IPA-ish labels, a colourblind-safe palette
 # ---------------------------------------------------------------------------
 
-# Okabe-Ito (colourblind-safe). Colour means LARYNGEAL everywhere - one key, every figure.
+# Okabe-Ito (colourblind-safe). Color means LARYNGEAL everywhere - one key, every figure.
 LARYNGEAL_ORDER = ["plain", "aspirated_glottal", "aspirated_uvular", "ejective"]
 LARYNGEAL_COLOR = {
     "plain": "#0072B2",            # blue
@@ -54,27 +54,32 @@ LARYNGEAL_COLOR = {
 }
 LARYNGEAL_LABEL = {
     "plain": "plain\nC",
-    "aspirated_glottal": "asp. glottal\nCʰ",
-    "aspirated_uvular": "asp. uvular\nCȟ",
+    "aspirated_glottal": "glottal asp.\nCʰ",
+    "aspirated_uvular": "uvular asp.\nCȟ",
     "ejective": "ejective\nCʼ",
 }
 # compact two-line tick labels for narrow faceted panels (F1)
 LARYNGEAL_LABEL_SHORT = {
-    "plain": "plain",
-    "aspirated_glottal": "Cʰ\nglot.",
-    "aspirated_uvular": "Cȟ\nuvul.",
-    "ejective": "Cʼ\nejec.",
+    "plain": "C\nplain",
+    "aspirated_glottal": "Cʰ\nglottal",
+    "aspirated_uvular": "Cȟ\nuvular",
+    "ejective": "Cʼ\nejective",
 }
 
 TITLE_PAD = 20  # lift a subplot title clear of the per-cell n= row that sits at the axes top
 
 MANNER_ORDER = ["stop", "affricate", "fricative"]
 PLACE_ORDER = ["labial", "coronal", "velar", "alveolar", "postalveolar", "uvular"]
-NEUTRAL = "#5A5A5A"  # non-ejective / reference grey
+NEUTRAL = "#5A5A5A"  # non-ejective / reference gray
 
+# IPA glyphs (notably ȟ, U+021F) must render with the caron ON the h, not the preceding
+# consonant. DejaVu Sans (matplotlib's default) mis-positions it; Segoe UI places it correctly
+# and carries a bold weight (titles need it). Fallback chain keeps figures sane off-Windows.
 plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Segoe UI", "Charis SIL", "Gentium Plus", "Arial", "DejaVu Sans"],
     "figure.dpi": 130,
-    "savefig.dpi": 160,
+    "savefig.dpi": 300,            # print-grade for document inclusion
     "font.size": 10,
     "axes.titlesize": 11,
     "axes.titleweight": "bold",
@@ -207,8 +212,8 @@ def fig_vot_ladder_q1(df, sid, outdir):
         ax.set_title(place, pad=TITLE_PAD)
         ax.tick_params(axis="x", labelsize=8.5)
     axes[0].set_ylabel("VOT (ms)")
-    _supertitle(fig, sid, "Q1 · word-initial VOT by laryngeal category",
-                "stops only · shaded = ejective (VOT ⊇ silent gap, cf. F6)")
+    _supertitle(fig, sid, "Word-initial VOT by laryngeal category",
+                "stops only · shaded = ejective (VOT includes the silent gap, cf. F6)")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     return _save(fig, outdir, "q1_vot_ladder")
 
@@ -237,7 +242,7 @@ def fig_vot_position_q1(df, sid, outdir):
         _strip_box(ax, cats, colors=cols, labels={"initial": "init.", "intervocalic": "interV"})
         ax.set_title(LARYNGEAL_LABEL.get(lar, lar).replace("\n", " "), fontsize=10, pad=TITLE_PAD)
     axes[0].set_ylabel("VOT (ms)")
-    _supertitle(fig, sid, "Q1 · VOT by word position", "stops · darker = initial")
+    _supertitle(fig, sid, "VOT by word position", "Plosives | Darker = Word-initial")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     return _save(fig, outdir, "q1_vot_position")
 
@@ -269,7 +274,7 @@ def fig_vot_stress_q1(df, sid, outdir):
                    labels={"stressed": "stress", "unstressed": "unstr."})
         ax.set_title(LARYNGEAL_LABEL.get(lar, lar).replace("\n", " "), fontsize=10, pad=TITLE_PAD)
     axes[0].set_ylabel("VOT (ms)")
-    _supertitle(fig, sid, "Q1 · word-initial VOT by stress", "stops · darker = stressed")
+    _supertitle(fig, sid, "Word-initial VOT by stress", "Plosives | Darker = Stressed")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     return _save(fig, outdir, "q1_vot_stress")
 
@@ -333,8 +338,8 @@ def fig_guttural_cog_q2(df, sid, outdir):
     ax.set_title("noise-source space")
     ax.legend(loc="upper right", fontsize=9)
 
-    _supertitle(fig, sid, "Q2 · guttural aspiration localization",
-                "uvular vs glottal · vowel-context view pending following_vowel")
+    _supertitle(fig, sid, "Guttural Aspiration Localization",
+                "Uvular vs Glottal")
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     return _save(fig, outdir, "q2_guttural_cog")
 
@@ -352,9 +357,13 @@ def fig_affricate_q3(df, sid, outdir):
     d = df[_accepted(df) & df["manner"].eq("affricate")]
     if d.empty:
         return None
-    order = [l for l in ["plain", "aspirated_glottal", "ejective"]
-             if d["laryngeal"].astype(str).eq(l).any()]
-    labels = {"plain": "plain\ntʃ", "aspirated_glottal": "asp.\ntʃʰ", "ejective": "ejective\ntʃʼ"}
+    # aspirated affricate may be coded glottal OR uvular (uvular tʃȟ in this data) - detect it.
+    asp = next((l for l in ("aspirated_glottal", "aspirated_uvular")
+                if d["laryngeal"].astype(str).eq(l).any()), None)
+    order = [l for l in ["plain", asp, "ejective"]
+             if l and d["laryngeal"].astype(str).eq(l).any()]
+    labels = {"plain": "tʃ\nplain", "ejective": "tʃʼ\nejective",
+              "aspirated_glottal": "tʃʰ\naspirated", "aspirated_uvular": "tʃȟ\naspirated"}
 
     fig, axes = plt.subplots(1, 2, figsize=(10.5, 4.6))
     _strip_box(axes[0], _values_by(d, "laryngeal", "vot_ms", order),
@@ -373,7 +382,7 @@ def fig_affricate_q3(df, sid, outdir):
     ax.set_title("time vs spectrum")
     ax.legend(loc="upper right", fontsize=9)
 
-    _supertitle(fig, sid, "Q3 · affricate differentiation", "plain / aspirated / ejective ⟨č⟩")
+    _supertitle(fig, sid, "Affricate Differentiation", "Plain / Aspirated / Ejective ⟨č⟩")
     fig.tight_layout(rect=(0, 0, 1, 0.93))
     return _save(fig, outdir, "q3_affricate")
 
@@ -386,7 +395,7 @@ def fig_lexicalization_q2e(df, sid, outdir):
     """For /C_e/ items: does the realized aspiration COG track what the source DOCUMENTS the
     guttural as (documented_asp), or does /e/-context aspiration float free (coarticulation)?
 
-    x = documented place (glottal/uvular); y = realized noise COG; points coloured by the
+    x = documented place (glottal/uvular); y = realized noise COG; points colored by the
     token's own realized laryngeal. Skips cleanly if documented_asp is unfilled.
     """
     if "documented_asp" not in df.columns:
@@ -408,7 +417,7 @@ def fig_lexicalization_q2e(df, sid, outdir):
                        medianprops=dict(color=NEUTRAL, lw=2),
                        boxprops=dict(facecolor=_lighten(NEUTRAL, 0.9), edgecolor=NEUTRAL, lw=1.2),
                        whiskerprops=dict(color=NEUTRAL, lw=1), capprops=dict(color=NEUTRAL, lw=1))
-        # colour each point by its REALIZED laryngeal, to see if realization matches the doc
+        # color each point by its REALIZED laryngeal, to see if realization matches the doc
         for lar in ["aspirated_glottal", "aspirated_uvular"]:
             lv = _num(sub[sub["laryngeal"].astype(str).eq(lar)], "noise_cog_hz").dropna().to_numpy()
             if len(lv):
@@ -426,9 +435,9 @@ def fig_lexicalization_q2e(df, sid, outdir):
                           label={"aspirated_glottal": "realized glottal",
                                  "aspirated_uvular": "realized uvular"}[l])
                for l in ["aspirated_glottal", "aspirated_uvular"]]
-    ax.legend(handles=handles, loc="best", fontsize=9, title="point colour")
-    _supertitle(fig, sid, "Q2e · /C_e/ guttural lexicalization",
-                "realized COG vs documented place · is /e/-aspiration fixed or gradient?")
+    ax.legend(handles=handles, loc="best", fontsize=9, title="point color")
+    _supertitle(fig, sid, "Guttural Lexicalization in the /Ce/ Context",
+                "Realized COG vs documented place | Is /e/-aspiration fixed or gradient?")
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     return _save(fig, outdir, "q2e_lexicalization")
 
@@ -443,7 +452,7 @@ def fig_ejective_q4(df, sid, outdir):
     Panel 1 is the ejective's own silent-gap distribution (the temporal signature). Panels
     2-8 put ejective beside non-ejective on the cues that should separate them if the glottis
     is tense into the vowel (gap depth, f0 onset, f0 excursion, H1-H2, HNR, jitter, shimmer).
-    Mirrors the 'overall' scope of the instructor-mandated t-tests (points coloured by manner
+    Mirrors the 'overall' scope of the instructor-mandated t-tests (points colored by manner
     so the manner mix in each box is visible).
     """
     d = df[_accepted(df)]
@@ -498,8 +507,8 @@ def fig_ejective_q4(df, sid, outdir):
           for mn, m in manner_marker.items()]
     axes.ravel()[0].legend(handles=mh, loc="upper left", fontsize=8, title="manner",
                            title_fontsize=8)
-    _supertitle(fig, sid, "Q4 · ejective canonicality",
-                "strong silent gap vs muted f0/voice-quality cues into the vowel")
+    _supertitle(fig, sid, "Ejective Canonicality",
+                "Strong silent gap vs muted f0 / voice-quality cues into the vowel")
     fig.tight_layout(rect=(0, 0, 1, 0.95))
     return _save(fig, outdir, "q4_ejective_canonicality")
 
@@ -555,7 +564,7 @@ def fig_inventory_vot(df, sid, outdir):
     ax.set_xlabel("word-initial VOT (ms)")
     ax.grid(axis="y", visible=False)
     _supertitle(fig, sid, "Word-initial VOT across the inventory",
-                "ordered manner → laryngeal · shaded = ejective (VOT ⊇ silent gap)")
+                "ordered manner → laryngeal · shaded = ejective (VOT includes the silent gap)")
     fig.tight_layout(rect=(0, 0, 1, 0.94))
     return _save(fig, outdir, "inventory_vot")
 
